@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="description" content="Run typed option logits and autoregressive JSON locally with open models and WebGPU." />
+    <title>SemIf (formerly OpenJev) — local decisions in your browser</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20,600,0,0&amp;icon_names=add,check,check_circle,download,error,hourglass_top,memory,play_arrow,progress_activity,refresh,remove,replay&amp;display=block" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="page">
+      <aside class="research-notice" role="note"><strong>Independent research project.</strong> Formerly called OpenJev. Not affiliated with or endorsed by TypeSafe. No infringement is intended.</aside>
+      <header class="mast">
+        <a class="brand" href="./">SemIf (formerly OpenJev)</a>
+        <span class="tagline">Semantic ifs from open models, in your browser.</span>
+      </header>
+
+      <section class="hero">
+        <p class="eyebrow">A live, local experiment</p>
+        <h1>Decision model <mark>in your browser.</mark></h1>
+        <p class="lede">A local model can either read probabilities for your allowed options without decoding them, or write the same kind of distribution token by token. Run both on your own GPU and measure the difference.</p>
+      </section>
+
+      <section class="machine" aria-labelledby="setup-title">
+        <div class="section-head">
+          <div><p class="eyebrow">00 / setup</p><h2 id="setup-title">Qwen3 0.6B loads automatically</h2></div>
+          <button id="load" type="button" hidden><span class="material-symbols-rounded" aria-hidden="true">refresh</span> retry model load</button>
+        </div>
+        <div class="quality-card" aria-labelledby="quality-title">
+          <div class="quality-heading"><strong id="quality-title">Measured model quality</strong><span>native checkpoints · owned + public benchmarks</span></div>
+          <div class="quality-scroll">
+            <table>
+              <thead><tr><th>Model</th><th>Download</th><th>Authored</th><th>Perturbed</th><th>TypeSafe</th></tr></thead>
+              <tbody>
+                <tr class="selected"><td>Qwen3 0.6B</td><td>639 MB</td><td>44.0%</td><td>52.8%</td><td>40.7%</td></tr>
+                <tr><td>Published Jev</td><td>hosted</td><td>—</td><td>—</td><td>88.3%</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Owned columns are balanced accuracy. TypeSafe is equal-case agreement on the same 102-row public subset; Jev is the published value. Browser quantization may change model accuracy.</p>
+        </div>
+        <div id="support"><p :class="['support', kind]" role="status"><span class="material-symbols-rounded" aria-hidden="true">{{ icon }}</span>{{ text }}</p></div>
+        <div class="phases" aria-label="Model setup phases">
+          <div class="phase"><small>download / cache</small><strong id="download-value">—</strong><div class="meter"><i id="download-meter"></i></div><span id="download-detail">639 MB on first visit, cached afterwards</span></div>
+          <div class="phase"><small>model load</small><strong id="load-value">—</strong><span>download and prepare</span></div>
+          <div class="phase"><small>warmup</small><strong id="warmup-value">—</strong><span>compile passes for both methods</span></div>
+        </div>
+        <p class="fine">Weights come from Hugging Face and remain in your browser cache. Inputs never leave this page. First load can take a few minutes depending on network and GPU.</p>
+      </section>
+
+      <section class="workbench" aria-labelledby="workbench-title">
+        <div class="section-head">
+          <div><p class="eyebrow">01 / decision</p><h2 id="workbench-title">Give it a real choice</h2></div>
+          <button id="run" type="button" disabled><span class="material-symbols-rounded" aria-hidden="true">play_arrow</span> run both methods</button>
+        </div>
+
+        <div class="presets" aria-label="Prefill an example">
+          <span>Try an example</span>
+          <button type="button" data-preset="account">Account support</button>
+          <button type="button" data-preset="email">Email triage</button>
+        </div>
+
+        <div class="inputs">
+          <label>State<textarea id="state" rows="5">A customer says a password reset succeeded, but every login attempt still returns “account locked”. Two unlock emails were requested and neither arrived.</textarea></label>
+          <label>Question<input id="question" value="Which queue should handle this request?" /></label>
+          <fieldset><legend>Allowed options</legend>
+            <div id="option-list">
+              <label class="option-row"><b>A</b><input class="option" value="Account access support" /></label>
+              <label class="option-row"><b>B</b><input class="option" value="Billing support" /></label>
+              <label class="option-row"><b>C</b><input class="option" value="Close as resolved" /></label>
+            </div>
+            <div class="option-actions">
+              <button id="remove-option" type="button"><span class="material-symbols-rounded" aria-hidden="true">remove</span> remove</button>
+              <span id="option-count">3 / 20</span>
+              <button id="add-option" type="button"><span class="material-symbols-rounded" aria-hidden="true">add</span> add</button>
+            </div>
+          </fieldset>
+        </div>
+        <p class="fine">Both paths receive the same decision. One reads option probabilities directly; the other asks the model to write its option probabilities as JSON text.</p>
+      </section>
+
+      <section class="method-map" aria-label="The two decision paths">
+        <div class="method-input"><small>your decision</small><strong>state + question + options</strong></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="method-model"><small>same local model</small><strong>Qwen3 · 0.6B</strong></div>
+        <div class="fork" aria-hidden="true">↗<br />↘</div>
+        <div class="method-outputs">
+          <div><small>read logits</small><strong>A…T probabilities</strong></div>
+          <div><small>write tokens</small><strong><i>{</i><i>options</i><i> + </i><i>probabilities</i><i>}</i></strong></div>
+        </div>
+      </section>
+
+      <section class="race" aria-label="Live comparison results">
+        <article class="lane direct">
+          <div class="lane-head"><div><p class="eyebrow">02A / direct readout</p><h2>Choice probabilities</h2></div><span class="badge">no decoding</span></div>
+          <p class="explain">Read the model’s choice logits and normalize only across the options you supplied.</p>
+          <div id="direct-output" class="output empty">waiting for a run</div>
+          <dl class="metrics">
+            <div><dt>total</dt><dd id="direct-total">—</dd></div>
+            <div><dt>input</dt><dd id="direct-input">—</dd></div>
+            <div><dt>output</dt><dd id="direct-readouts">1 readout</dd></div>
+          </dl>
+        </article>
+
+        <article class="lane generated">
+          <div class="lane-head"><div><p class="eyebrow">02B / generation</p><h2>JSON probabilities</h2></div><span class="badge pink">token by token</span></div>
+          <p class="explain">Ask the model to estimate the same displayed-option distribution and write it as JSON. Watch every token arrive.</p>
+          <pre id="generated-output" class="output empty">waiting for a run</pre>
+          <dl class="metrics">
+            <div><dt>first token</dt><dd id="generation-ttft">—</dd></div>
+            <div><dt>total</dt><dd id="generation-total">—</dd></div>
+            <div><dt>input</dt><dd id="generation-input">—</dd></div>
+            <div><dt>output</dt><dd id="generation-tokens">—</dd></div>
+          </dl>
+        </article>
+      </section>
+
+      <section class="verdict" aria-live="polite">
+        <span>measured wall-time ratio</span><strong id="ratio">run it on your GPU</strong>
+        <p id="run-note">The methods run sequentially on the same loaded model so they do not contend for one GPU. Direct runs first, then generation.</p>
+      </section>
+
+      <details>
+        <summary>Why direct readout and generation disagree</summary>
+        <div class="details-prose">
+          <p>Because they measure two different things, and only one of them is a probability in the strict sense.</p>
+          <p><b>Direct readout</b> takes the model's logits at the first answer position, keeps only the option letter tokens, and applies a softmax across them. That is the model's actual next-token preference between the options. It reflects what the network computes, including small residual mass on unlikely options. These are conditional probabilities over the displayed options only; they are not calibrated confidence. A typical run gives something like A 0.865, B 0.000, C 0.135.</p>
+          <p><b>Generation</b> asks the model to write numbers as text. The values in the JSON are just tokens the model decided to emit, not a readout of anything internal. A 0.6B model has strong habits here: it writes round, stereotyped numbers like 0.5 / 0.4 / 0.1, or collapses to 1.0 on one key, because "1.0" is a common pattern in its training data. Verbalized probabilities are known to be poorly calibrated even for large models, and for a tiny one they are closer to a formatting reflex than an estimate.</p>
+          <p>There are also two smaller contributors:</p>
+          <ul>
+            <li><b>Different prompts.</b> The direct path says "reply with one letter". The generation path adds instructions about JSON keys, values summing to 1 and an example distribution. The model conditions on that example, which nudges its numbers toward the example's shape.</li>
+            <li><b>Greedy decoding.</b> Generation runs at temperature 0, so you always get the single most habitual number sequence, not a sample from a distribution.</li>
+          </ul>
+          <p>The timing gap has a simpler cause. Direct needs one forward pass over the prompt and reads the logits. Generation needs that same pass plus one full forward pass per emitted token, run sequentially, so 30 to 40 tokens costs 2 to 3× the wall time. That ratio is what the page is designed to show. Setup, warmup and both paths are timed with <code>performance.now()</code>; no canned results appear.</p>
+          <p>So the honest reading of the two panels: the left one is the model's decision, the right one is the model's story about its decision.</p>
+        </div>
+      </details>
+
+      <footer><span>SemIf / browser lab</span><span><a href="README.md">implementation notes</a> · <a href="https://huggingface.co/Qwen/Qwen3-0.6B-GGUF">model</a> · <a href="https://github.com/ngxson/wllama">wllama</a></span></footer>
+    </main>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
+
