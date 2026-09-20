@@ -38,7 +38,8 @@ a:hover { color: var(--blue-600); }
 .btn-secondary { background: var(--paper-2); color: var(--ink); box-shadow: none; }
 .btn-secondary:hover:not(:disabled) { background: var(--paper-3); }
 .btn-small { padding: 8px 14px; font-size: var(--caption); }
-.material-symbols-rounded { font-size: 18px; line-height: 1; }
+.lucide { width: 18px; height: 18px; flex: none; }
+.support-icon { display: inline-flex; }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 

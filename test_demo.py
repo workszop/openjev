@@ -16,7 +16,7 @@ def test_static_runtime_and_pins():
     assert (WEBGPU / "vendor/wllama/LICENCE").is_file()
     assert "wllama" in text["README.md"] and "3.6.1" in text["README.md"]
     assert "vue@3.5.21" in text["app.js"]
-    assert "Material+Symbols+Rounded" in text["index.html"]
+    assert "lucide@0.547.0/dist/umd/lucide.min.js" in text["index.html"] and "Material" not in text["index.html"]
     assert "Cross-Origin-Opener-Policy: same-origin" in text["_headers"]
     assert "Cross-Origin-Embedder-Policy: require-corp" in text["_headers"]
 

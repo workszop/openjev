@@ -28,8 +28,16 @@ const removeOptionButton = $("#remove-option");
 const files = new Map();
 let ready = false;
 
-const supportState = reactive({ text: "Checking WebGPU…", kind: "", icon: "memory" });
+const supportState = reactive({ text: "Checking WebGPU…", kind: "" });
 createApp({ setup: () => supportState }).mount("#support");
+
+// Lucide icons: markup uses <i data-lucide="name">; call after any innerHTML change.
+function icon(name, extraClass = "") {
+  return `<i data-lucide="${name}" class="${extraClass}" aria-hidden="true"></i>`;
+}
+function renderIcons() {
+  if (window.lucide) window.lucide.createIcons({ icons: window.lucide.icons });
+}
 
 
 function seconds(ms) {
@@ -39,7 +47,11 @@ function seconds(ms) {
 function setSupport(text, kind = "") {
   supportState.text = text;
   supportState.kind = kind;
-  supportState.icon = kind === "error" ? "error" : kind === "ok" ? "check_circle" : "memory";
+  const holder = $("#support .support-icon");
+  if (holder) {
+    holder.innerHTML = icon(kind === "error" ? "circle-alert" : kind === "ok" ? "circle-check" : "cpu");
+    renderIcons();
+  }
 }
 
 
@@ -152,7 +164,8 @@ worker.addEventListener("message", ({ data }) => {
       $("#run-note").textContent = `Measured sequentially in this tab. Direct: ${seconds(data.directMs)}. Generation: ${seconds(data.generationMs)}. Order is fixed and the model was warmed before both.`;
       setSupport("Comparison complete. Edit the decision and run again whenever you like.", "ok");
       runButton.disabled = false;
-      runButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">replay</span> run again';
+      runButton.innerHTML = `${icon("rotate-ccw")} run again`;
+      renderIcons();
       break;
     }
     case "error":
@@ -160,7 +173,8 @@ worker.addEventListener("message", ({ data }) => {
       runButton.disabled = !ready;
       loadButton.hidden = ready;
       loadButton.disabled = false;
-      loadButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">refresh</span> retry model load';
+      loadButton.innerHTML = `${icon("refresh-cw")} retry model load`;
+      renderIcons();
       break;
   }
 });
@@ -263,9 +277,11 @@ runButton.addEventListener("click", () => {
   }
   resetResults();
   runButton.disabled = true;
-  runButton.innerHTML = '<span class="material-symbols-rounded spin" aria-hidden="true">progress_activity</span> running…';
+  runButton.innerHTML = `${icon("loader-circle", "spin")} running…`;
+  renderIcons();
   setSupport("Running direct readout, then autoregressive generation…");
   worker.postMessage({ type: "compare", data: { state, question, options } });
 });
 
 checkWebGPU().catch((error) => setSupport(`WebGPU check failed: ${error.message}`, "error"));
+renderIcons();

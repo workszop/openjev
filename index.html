@@ -6,9 +6,8 @@
     <meta name="referrer" content="no-referrer" />
     <meta name="description" content="Run typed option logits and autoregressive JSON locally with open models and WebGPU." />
     <title>SemIf (formerly OpenJev) — local decisions in your browser</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20,600,0,0&amp;icon_names=add,check,check_circle,download,error,hourglass_top,memory,play_arrow,progress_activity,refresh,remove,replay&amp;display=block" />
     <link rel="stylesheet" href="tokens.css?v=3" />
-    <link rel="stylesheet" href="style.css?v=4" />
+    <link rel="stylesheet" href="style.css?v=5" />
   </head>
   <body class="edu">
     <header class="edu-header">
@@ -29,7 +28,7 @@
       <section class="card machine" aria-labelledby="setup-title">
         <div class="section-head">
           <h2 id="setup-title">Qwen3 0.6B loads automatically</h2>
-          <button id="load" type="button" class="btn" hidden><span class="material-symbols-rounded" aria-hidden="true">refresh</span> retry model load</button>
+          <button id="load" type="button" class="btn" hidden><i data-lucide="refresh-cw" aria-hidden="true"></i> retry model load</button>
         </div>
         <div class="quality-card" aria-labelledby="quality-title">
           <div class="quality-heading"><strong id="quality-title" class="edu-overline">Measured model quality</strong><span class="edu-caption">native checkpoints · owned + public benchmarks</span></div>
@@ -44,7 +43,7 @@
           </div>
           <p class="edu-caption">Owned columns are balanced accuracy. TypeSafe is equal-case agreement on the same 102-row public subset; Jev is the published value. Browser quantization may change model accuracy.</p>
         </div>
-        <div id="support"><p :class="['support', 'edu-block', kind]" role="status"><span class="material-symbols-rounded" aria-hidden="true">{{ icon }}</span>{{ text }}</p></div>
+        <div id="support"><p :class="['support', 'edu-block', kind]" role="status"><span class="support-icon" v-once><i data-lucide="cpu" aria-hidden="true"></i></span>{{ text }}</p></div>
         <div class="phases" aria-label="Model setup phases">
           <div class="phase"><small class="edu-overline">download / cache</small><strong id="download-value">—</strong><div class="meter"><i id="download-meter"></i></div><span id="download-detail">639 MB on first visit, cached afterwards</span></div>
           <div class="phase"><small class="edu-overline">model load</small><strong id="load-value">—</strong><span>download and prepare</span></div>
@@ -56,7 +55,7 @@
       <section class="card workbench" aria-labelledby="workbench-title">
         <div class="section-head">
           <h2 id="workbench-title">Give it a real choice</h2>
-          <button id="run" type="button" class="btn" disabled><span class="material-symbols-rounded" aria-hidden="true">play_arrow</span> run both methods</button>
+          <button id="run" type="button" class="btn" disabled><i data-lucide="play" aria-hidden="true"></i> run both methods</button>
         </div>
 
         <div class="presets" aria-label="Prefill an example">
@@ -75,9 +74,9 @@
               <label class="option-row"><b>C</b><input class="option" value="Close as resolved" /></label>
             </div>
             <div class="option-actions">
-              <button id="remove-option" type="button" class="btn btn-secondary btn-small"><span class="material-symbols-rounded" aria-hidden="true">remove</span> remove</button>
+              <button id="remove-option" type="button" class="btn btn-secondary btn-small"><i data-lucide="minus" aria-hidden="true"></i> remove</button>
               <span id="option-count">3 / 20</span>
-              <button id="add-option" type="button" class="btn btn-secondary btn-small"><span class="material-symbols-rounded" aria-hidden="true">add</span> add</button>
+              <button id="add-option" type="button" class="btn btn-secondary btn-small"><i data-lucide="plus" aria-hidden="true"></i> add</button>
             </div>
           </fieldset>
         </div>
@@ -143,6 +142,7 @@
 
       <footer><span>SemIf / browser lab</span><span><a href="README.md">implementation notes</a> · <a href="https://huggingface.co/Qwen/Qwen3-0.6B-GGUF">model</a> · <a href="https://github.com/ngxson/wllama">wllama</a></span></footer>
     </main>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.547.0/dist/umd/lucide.min.js"></script>
     <script type="module" src="app.js"></script>
   </body>
 </html>
