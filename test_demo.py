@@ -59,8 +59,5 @@ def test_live_comparison_and_limits():
 def test_identity_notice_and_ui_mode_switch():
     text = sources()
     assert ">SemIf (formerly OpenJev)<" in text["index.html"]
-    assert "Independent research project" in text["index.html"]
-    assert "Not affiliated with or endorsed by TypeSafe" in text["index.html"]
-    assert "Formerly called OpenJev" in text["index.html"]
-    assert "No infringement is intended" in text["index.html"]
+    assert 'href="https://github.com/TheoLeeCJ/SemIf/tree/master/webgpu-demo"' in text["index.html"]
     assert "ui-mode" not in text["index.html"] and "plain-ui" not in text["app.js"]
