@@ -9,7 +9,7 @@ def sources():
 def test_static_runtime_and_pins():
     text = sources()
     assert 'src="app.js"' in text["index.html"]
-    assert 'href="style.css"' in text["index.html"]
+    assert 'href="style.css?v=' in text["index.html"]
     assert 'new Worker("worker.js", { type: "module" })' in text["app.js"]
     assert 'import("./vendor/wllama/index.js")' in text["worker.js"]
     assert (WEBGPU / "vendor/wllama/wasm/wllama.wasm").stat().st_size > 1_000_000
