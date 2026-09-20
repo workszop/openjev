@@ -7,7 +7,7 @@
     <meta name="description" content="Run typed option logits and autoregressive JSON locally with open models and WebGPU." />
     <title>SemIf (formerly OpenJev) — local decisions in your browser</title>
     <link rel="stylesheet" href="tokens.css?v=3" />
-    <link rel="stylesheet" href="style.css?v=5" />
+    <link rel="stylesheet" href="style.css?v=6" />
   </head>
   <body class="edu">
     <header class="edu-header">
@@ -24,6 +24,19 @@
         <p class="edu-lead">A local model can either read probabilities for your allowed options without decoding them, or write the same kind of distribution token by token.</p>
         <p class="research-notice" role="note">Fork of <a href="https://github.com/TheoLeeCJ/SemIf/tree/master/webgpu-demo">github.com/TheoLeeCJ/SemIf/webgpu-demo</a></p>
       </header>
+
+      <section class="intro edu-block" aria-label="How it works">
+        <div class="intro-col">
+          <span class="edu-overline">1 · direct readout</span>
+          <h3>Read the answer off the logits</h3>
+          <p>One forward pass over your state, question and options. The model never writes a word: we take its next-token logits for the option letters and softmax across them.</p>
+        </div>
+        <div class="intro-col">
+          <span class="edu-overline">2 · generation</span>
+          <h3>Let the model write it out</h3>
+          <p>Same decision, but the model is asked to type a JSON distribution token by token. You watch every token arrive and compare the wall time of both paths on your own GPU.</p>
+        </div>
+      </section>
 
       <section class="card machine" aria-labelledby="setup-title">
         <div class="section-head">

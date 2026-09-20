@@ -25,6 +25,11 @@ a:hover { color: var(--blue-600); }
 .research-notice { margin: var(--sp-4) 0 0; font-family: var(--font-mono); font-size: var(--caption); color: var(--ink-3); }
 .research-notice a { color: var(--ink-2); }
 
+.intro { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-8); padding: 34px 36px; border-radius: var(--r-xl); background: var(--blue-soft); color: var(--blue-ink); }
+.intro .edu-overline { color: inherit; opacity: .8; }
+.intro h3 { margin: 10px 0 8px; font-family: var(--font-display); font-weight: 600; font-size: var(--h3); line-height: 1.2; letter-spacing: -.01em; }
+.intro p { margin: 0; font-size: var(--body); line-height: 1.55; }
+
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: var(--shadow-sm); padding: 28px; }
 .section-head, .lane-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-5); flex-wrap: wrap; }
 .section-head h2, .lane h2 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: var(--h3); line-height: 1.2; letter-spacing: -.01em; color: var(--ink); }
@@ -160,7 +165,8 @@ footer a { color: var(--ink-2); }
   .presets { align-items: stretch; }
   .presets .edu-overline { width: 100%; }
   .presets .btn { flex: 1; }
-  .phases, .race, .inputs, .method-map { grid-template-columns: 1fr; }
+  .phases, .race, .inputs, .method-map, .intro { grid-template-columns: 1fr; }
+  .intro { padding: 24px 22px; gap: var(--sp-5); }
   .phase { min-height: auto; }
   .inputs > label:first-child { grid-row: auto; }
   .arrow, .fork { transform: rotate(90deg); }
