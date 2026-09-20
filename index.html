@@ -7,29 +7,32 @@
     <meta name="description" content="Run typed option logits and autoregressive JSON locally with open models and WebGPU." />
     <title>SemIf (formerly OpenJev) — local decisions in your browser</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20,600,0,0&amp;icon_names=add,check,check_circle,download,error,hourglass_top,memory,play_arrow,progress_activity,refresh,remove,replay&amp;display=block" />
-    <link rel="stylesheet" href="style.css?v=2" />
+    <link rel="stylesheet" href="tokens.css?v=3" />
+    <link rel="stylesheet" href="style.css?v=4" />
   </head>
-  <body>
+  <body class="edu">
+    <header class="edu-header">
+      <div class="edu-header-inner">
+        <img class="edu-logo" alt="edulab" src="edulab-mark-ink.png" />
+        <span class="edu-wordmark">edulab</span>
+        <span class="header-app">SemIf browser lab</span>
+      </div>
+    </header>
+
     <main class="page">
-      <aside class="research-notice" role="note">Fork of <a href="https://github.com/TheoLeeCJ/SemIf/tree/master/webgpu-demo">github.com/TheoLeeCJ/SemIf/webgpu-demo</a></aside>
-      <header class="mast">
-        <a class="brand" href="./">SemIf (formerly OpenJev)</a>
-        <span class="tagline">Semantic ifs from open models, in your browser.</span>
+      <header class="page-header">
+        <h1 class="app-title">Decision model in your browser</h1>
+        <p class="edu-lead">A local model can either read probabilities for your allowed options without decoding them, or write the same kind of distribution token by token. Run both on your own GPU and measure the difference.</p>
+        <p class="research-notice" role="note">Fork of <a href="https://github.com/TheoLeeCJ/SemIf/tree/master/webgpu-demo">github.com/TheoLeeCJ/SemIf/webgpu-demo</a></p>
       </header>
 
-      <section class="hero">
-        <p class="eyebrow">A live, local experiment</p>
-        <h1>Decision model <mark>in your browser.</mark></h1>
-        <p class="lede">A local model can either read probabilities for your allowed options without decoding them, or write the same kind of distribution token by token. Run both on your own GPU and measure the difference.</p>
-      </section>
-
-      <section class="machine" aria-labelledby="setup-title">
+      <section class="card machine" aria-labelledby="setup-title">
         <div class="section-head">
-          <div><p class="eyebrow">00 / setup</p><h2 id="setup-title">Qwen3 0.6B loads automatically</h2></div>
-          <button id="load" type="button" hidden><span class="material-symbols-rounded" aria-hidden="true">refresh</span> retry model load</button>
+          <h2 id="setup-title">Qwen3 0.6B loads automatically</h2>
+          <button id="load" type="button" class="btn" hidden><span class="material-symbols-rounded" aria-hidden="true">refresh</span> retry model load</button>
         </div>
         <div class="quality-card" aria-labelledby="quality-title">
-          <div class="quality-heading"><strong id="quality-title">Measured model quality</strong><span>native checkpoints · owned + public benchmarks</span></div>
+          <div class="quality-heading"><strong id="quality-title" class="edu-overline">Measured model quality</strong><span class="edu-caption">native checkpoints · owned + public benchmarks</span></div>
           <div class="quality-scroll">
             <table>
               <thead><tr><th>Model</th><th>Download</th><th>Authored</th><th>Perturbed</th><th>TypeSafe</th></tr></thead>
@@ -39,42 +42,42 @@
               </tbody>
             </table>
           </div>
-          <p>Owned columns are balanced accuracy. TypeSafe is equal-case agreement on the same 102-row public subset; Jev is the published value. Browser quantization may change model accuracy.</p>
+          <p class="edu-caption">Owned columns are balanced accuracy. TypeSafe is equal-case agreement on the same 102-row public subset; Jev is the published value. Browser quantization may change model accuracy.</p>
         </div>
-        <div id="support"><p :class="['support', kind]" role="status"><span class="material-symbols-rounded" aria-hidden="true">{{ icon }}</span>{{ text }}</p></div>
+        <div id="support"><p :class="['support', 'edu-block', kind]" role="status"><span class="material-symbols-rounded" aria-hidden="true">{{ icon }}</span>{{ text }}</p></div>
         <div class="phases" aria-label="Model setup phases">
-          <div class="phase"><small>download / cache</small><strong id="download-value">—</strong><div class="meter"><i id="download-meter"></i></div><span id="download-detail">639 MB on first visit, cached afterwards</span></div>
-          <div class="phase"><small>model load</small><strong id="load-value">—</strong><span>download and prepare</span></div>
-          <div class="phase"><small>warmup</small><strong id="warmup-value">—</strong><span>compile passes for both methods</span></div>
+          <div class="phase"><small class="edu-overline">download / cache</small><strong id="download-value">—</strong><div class="meter"><i id="download-meter"></i></div><span id="download-detail">639 MB on first visit, cached afterwards</span></div>
+          <div class="phase"><small class="edu-overline">model load</small><strong id="load-value">—</strong><span>download and prepare</span></div>
+          <div class="phase"><small class="edu-overline">warmup</small><strong id="warmup-value">—</strong><span>compile passes for both methods</span></div>
         </div>
         <p class="fine">Weights come from Hugging Face and remain in your browser cache. Inputs never leave this page. First load can take a few minutes depending on network and GPU.</p>
       </section>
 
-      <section class="workbench" aria-labelledby="workbench-title">
+      <section class="card workbench" aria-labelledby="workbench-title">
         <div class="section-head">
-          <div><p class="eyebrow">01 / decision</p><h2 id="workbench-title">Give it a real choice</h2></div>
-          <button id="run" type="button" disabled><span class="material-symbols-rounded" aria-hidden="true">play_arrow</span> run both methods</button>
+          <h2 id="workbench-title">Give it a real choice</h2>
+          <button id="run" type="button" class="btn" disabled><span class="material-symbols-rounded" aria-hidden="true">play_arrow</span> run both methods</button>
         </div>
 
         <div class="presets" aria-label="Prefill an example">
-          <span>Try an example</span>
-          <button type="button" data-preset="account">Account support</button>
-          <button type="button" data-preset="email">Email triage</button>
+          <span class="edu-overline">Try an example</span>
+          <button type="button" class="btn btn-secondary" data-preset="account">Account support</button>
+          <button type="button" class="btn btn-secondary" data-preset="email">Email triage</button>
         </div>
 
         <div class="inputs">
-          <label>State<textarea id="state" rows="5">A customer says a password reset succeeded, but every login attempt still returns “account locked”. Two unlock emails were requested and neither arrived.</textarea></label>
-          <label>Question<input id="question" value="Which queue should handle this request?" /></label>
-          <fieldset><legend>Allowed options</legend>
+          <label><span class="edu-overline">State</span><textarea id="state" rows="5">A customer says a password reset succeeded, but every login attempt still returns “account locked”. Two unlock emails were requested and neither arrived.</textarea></label>
+          <label><span class="edu-overline">Question</span><input id="question" value="Which queue should handle this request?" /></label>
+          <fieldset><legend class="edu-overline">Allowed options</legend>
             <div id="option-list">
               <label class="option-row"><b>A</b><input class="option" value="Account access support" /></label>
               <label class="option-row"><b>B</b><input class="option" value="Billing support" /></label>
               <label class="option-row"><b>C</b><input class="option" value="Close as resolved" /></label>
             </div>
             <div class="option-actions">
-              <button id="remove-option" type="button"><span class="material-symbols-rounded" aria-hidden="true">remove</span> remove</button>
+              <button id="remove-option" type="button" class="btn btn-secondary btn-small"><span class="material-symbols-rounded" aria-hidden="true">remove</span> remove</button>
               <span id="option-count">3 / 20</span>
-              <button id="add-option" type="button"><span class="material-symbols-rounded" aria-hidden="true">add</span> add</button>
+              <button id="add-option" type="button" class="btn btn-secondary btn-small"><span class="material-symbols-rounded" aria-hidden="true">add</span> add</button>
             </div>
           </fieldset>
         </div>
@@ -82,47 +85,47 @@
       </section>
 
       <section class="method-map" aria-label="The two decision paths">
-        <div class="method-input"><small>your decision</small><strong>state + question + options</strong></div>
+        <div class="method-input"><small class="edu-overline">your decision</small><strong>state + question + options</strong></div>
         <div class="arrow" aria-hidden="true">→</div>
-        <div class="method-model"><small>same local model</small><strong>Qwen3 · 0.6B</strong></div>
+        <div class="method-model edu-block"><small class="edu-overline">same local model</small><strong>Qwen3 · 0.6B</strong></div>
         <div class="fork" aria-hidden="true">↗<br />↘</div>
         <div class="method-outputs">
-          <div><small>read logits</small><strong>A…T probabilities</strong></div>
-          <div><small>write tokens</small><strong><i>{</i><i>options</i><i> + </i><i>probabilities</i><i>}</i></strong></div>
+          <div class="edu-block"><small class="edu-overline">read logits</small><strong>A…T probabilities</strong></div>
+          <div class="edu-block"><small class="edu-overline">write tokens</small><strong><i>{</i><i>options</i><i> + </i><i>probabilities</i><i>}</i></strong></div>
         </div>
       </section>
 
       <section class="race" aria-label="Live comparison results">
-        <article class="lane direct">
-          <div class="lane-head"><div><p class="eyebrow">02A / direct readout</p><h2>Choice probabilities</h2></div><span class="badge">no decoding</span></div>
+        <article class="card lane direct">
+          <div class="lane-head"><h2>Choice probabilities</h2><span class="chip chip-blue">direct readout · no decoding</span></div>
           <p class="explain">Read the model’s choice logits and normalize only across the options you supplied.</p>
           <div id="direct-output" class="output empty">waiting for a run</div>
           <dl class="metrics">
-            <div><dt>total</dt><dd id="direct-total">—</dd></div>
-            <div><dt>input</dt><dd id="direct-input">—</dd></div>
-            <div><dt>output</dt><dd id="direct-readouts">1 readout</dd></div>
+            <div><dt class="edu-overline">total</dt><dd id="direct-total">—</dd></div>
+            <div><dt class="edu-overline">input</dt><dd id="direct-input">—</dd></div>
+            <div><dt class="edu-overline">output</dt><dd id="direct-readouts">1 readout</dd></div>
           </dl>
         </article>
 
-        <article class="lane generated">
-          <div class="lane-head"><div><p class="eyebrow">02B / generation</p><h2>JSON probabilities</h2></div><span class="badge pink">token by token</span></div>
+        <article class="card lane generated">
+          <div class="lane-head"><h2>JSON probabilities</h2><span class="chip chip-green">generation · token by token</span></div>
           <p class="explain">Ask the model to estimate the same displayed-option distribution and write it as JSON. Watch every token arrive.</p>
           <pre id="generated-output" class="output empty">waiting for a run</pre>
           <dl class="metrics">
-            <div><dt>first token</dt><dd id="generation-ttft">—</dd></div>
-            <div><dt>total</dt><dd id="generation-total">—</dd></div>
-            <div><dt>input</dt><dd id="generation-input">—</dd></div>
-            <div><dt>output</dt><dd id="generation-tokens">—</dd></div>
+            <div><dt class="edu-overline">first token</dt><dd id="generation-ttft">—</dd></div>
+            <div><dt class="edu-overline">total</dt><dd id="generation-total">—</dd></div>
+            <div><dt class="edu-overline">input</dt><dd id="generation-input">—</dd></div>
+            <div><dt class="edu-overline">output</dt><dd id="generation-tokens">—</dd></div>
           </dl>
         </article>
       </section>
 
-      <section class="verdict" aria-live="polite">
-        <span>measured wall-time ratio</span><strong id="ratio">run it on your GPU</strong>
+      <section class="verdict edu-block" aria-live="polite">
+        <span class="edu-overline">measured wall-time ratio</span><strong id="ratio">run it on your GPU</strong>
         <p id="run-note">The methods run sequentially on the same loaded model so they do not contend for one GPU. Direct runs first, then generation.</p>
       </section>
 
-      <details>
+      <details class="card">
         <summary>Why direct readout and generation disagree</summary>
         <div class="details-prose">
           <p>Because they measure two different things, and only one of them is a probability in the strict sense.</p>
@@ -143,4 +146,3 @@
     <script type="module" src="app.js"></script>
   </body>
 </html>
-

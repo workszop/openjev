@@ -26,7 +26,7 @@ def test_single_pinned_model_autoloads():
     assert "23749fefcc72300e3a2ad315e1317431b06b590a" in text["README.md"]
     assert 'const MODEL = {' in text["worker.js"] and "Qwen3-0.6B-Q8_0.gguf" in text["worker.js"]
     assert "model-select" not in text["index.html"] and "modelSelect" not in text["app.js"]
-    assert 'id="load" type="button" hidden' in text["index.html"]
+    assert 'id="load" type="button" class="btn" hidden' in text["index.html"]
     assert "startLoad();" in text["app.js"]  # auto-load right after the WebGPU check
     assert 'loadButton.addEventListener("click", startLoad)' in text["app.js"]
     assert "WARMUP_QUESTION" in text["worker.js"] and "/paris/i" in text["worker.js"]
@@ -58,6 +58,6 @@ def test_live_comparison_and_limits():
 
 def test_identity_notice_and_ui_mode_switch():
     text = sources()
-    assert ">SemIf (formerly OpenJev)<" in text["index.html"]
+    assert 'class="edu-logo"' in text["index.html"] and "SemIf browser lab" in text["index.html"]
     assert 'href="https://github.com/TheoLeeCJ/SemIf/tree/master/webgpu-demo"' in text["index.html"]
     assert "ui-mode" not in text["index.html"] and "plain-ui" not in text["app.js"]
