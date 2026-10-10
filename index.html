@@ -6,8 +6,11 @@
     <meta name="referrer" content="no-referrer" />
     <meta name="description" content="Run typed option logits and autoregressive JSON locally with open models and WebGPU." />
     <title>SemIf (formerly OpenJev) — local decisions in your browser</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap">
     <link rel="stylesheet" href="tokens.css?v=3" />
-    <link rel="stylesheet" href="style.css?v=6" />
+    <link rel="stylesheet" href="style.css?v=7" />
   </head>
   <body class="edu">
     <header class="edu-header">
@@ -25,6 +28,7 @@
         <p class="research-notice" role="note">Fork of <a href="https://github.com/TheoLeeCJ/SemIf/tree/master/webgpu-demo">github.com/TheoLeeCJ/SemIf/webgpu-demo</a></p>
       </header>
 
+      <div class="wrap intro-wrap">
       <section class="intro edu-block" aria-label="How it works">
         <div class="intro-col">
           <span class="edu-overline">1 · direct readout</span>
@@ -37,9 +41,10 @@
           <p>Same decision, but the model is asked to type a JSON distribution token by token. You watch every token arrive and compare the wall time of both paths on your own GPU.</p>
         </div>
       </section>
+      </div>
 
-      <section class="card machine" aria-labelledby="setup-title">
-        <div class="section-head">
+      <section class="sec machine" aria-labelledby="setup-title"><div class="wrap">
+        <div class="section-head sec-head">
           <h2 id="setup-title">Qwen3 0.6B loads automatically</h2>
           <button id="load" type="button" class="btn" hidden><i data-lucide="refresh-cw" aria-hidden="true"></i> retry model load</button>
         </div>
@@ -63,10 +68,10 @@
           <div class="phase"><small class="edu-overline">warmup</small><strong id="warmup-value">—</strong><span>compile passes for both methods</span></div>
         </div>
         <p class="fine">Weights come from Hugging Face and remain in your browser cache. Inputs never leave this page. First load can take a few minutes depending on network and GPU.</p>
-      </section>
+      </div></section>
 
-      <section class="card workbench" aria-labelledby="workbench-title">
-        <div class="section-head">
+      <section class="sec workbench" aria-labelledby="workbench-title"><div class="wrap">
+        <div class="section-head sec-head">
           <h2 id="workbench-title">Give it a real choice</h2>
           <button id="run" type="button" class="btn" disabled><i data-lucide="play" aria-hidden="true"></i> run both methods</button>
         </div>
@@ -94,7 +99,6 @@
           </fieldset>
         </div>
         <p class="fine">Both paths receive the same decision. One reads option probabilities directly; the other asks the model to write its option probabilities as JSON text.</p>
-      </section>
 
       <section class="method-map" aria-label="The two decision paths">
         <div class="method-input"><small class="edu-overline">your decision</small><strong>state + question + options</strong></div>
@@ -110,8 +114,10 @@
       <section class="race" aria-label="Live comparison results">
         <article class="card lane direct">
           <div class="lane-head"><h2>Choice probabilities</h2><span class="chip chip-blue">direct readout · no decoding</span></div>
+          <div class="lane-body">
           <p class="explain">Read the model’s choice logits and normalize only across the options you supplied.</p>
           <div id="direct-output" class="output empty">waiting for a run</div>
+          </div>
           <dl class="metrics">
             <div><dt class="edu-overline">total</dt><dd id="direct-total">—</dd></div>
             <div><dt class="edu-overline">input</dt><dd id="direct-input">—</dd></div>
@@ -121,8 +127,10 @@
 
         <article class="card lane generated">
           <div class="lane-head"><h2>JSON probabilities</h2><span class="chip chip-green">generation · token by token</span></div>
+          <div class="lane-body">
           <p class="explain">Ask the model to estimate the same displayed-option distribution and write it as JSON. Watch every token arrive.</p>
           <pre id="generated-output" class="output empty">waiting for a run</pre>
+          </div>
           <dl class="metrics">
             <div><dt class="edu-overline">first token</dt><dd id="generation-ttft">—</dd></div>
             <div><dt class="edu-overline">total</dt><dd id="generation-total">—</dd></div>
@@ -136,6 +144,9 @@
         <span class="edu-overline">measured wall-time ratio</span><strong id="ratio">run it on your GPU</strong>
         <p id="run-note">The methods run sequentially on the same loaded model so they do not contend for one GPU. Direct runs first, then generation.</p>
       </section>
+      </div></section>
+
+      <section class="sec more"><div class="wrap">
 
       <details class="card">
         <summary>Why direct readout and generation disagree</summary>
@@ -154,6 +165,7 @@
       </details>
 
       <footer><span>SemIf / browser lab</span><span><a href="README.md">implementation notes</a> · <a href="https://huggingface.co/Qwen/Qwen3-0.6B-GGUF">model</a> · <a href="https://github.com/ngxson/wllama">wllama</a></span></footer>
+      </div></section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.547.0/dist/umd/lucide.min.js"></script>
     <script type="module" src="app.js"></script>
