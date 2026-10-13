@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap">
     <link rel="stylesheet" href="tokens.css?v=3" />
     <link rel="stylesheet" href="style.css?v=9" />
-    <link rel="stylesheet" href="vega.css?v=2" />
+    <link rel="stylesheet" href="vega.css?v=3" />
   </head>
   <body class="edu">
     <header class="edu-header">
@@ -85,7 +85,12 @@
           <button type="button" class="btn btn-secondary" data-preset="review">Review scoring</button>
           <button type="button" class="btn btn-secondary" data-preset="escalation">JSON state</button>
           <button type="button" class="btn btn-secondary" data-preset="intent">Banking intent</button>
-          <a class="samples-link" href="samples.txt" download>more samples (.txt)</a>
+        </div>
+        <div class="presets samples-row" aria-label="Samples from samples.txt">
+          <span class="edu-overline">More samples</span>
+          <button id="load-samples" type="button" class="btn btn-secondary"><i data-lucide="file-text" aria-hidden="true"></i> load samples.txt</button>
+          <div id="sample-list" class="sample-list" data-count="0" hidden></div>
+          <a class="samples-link" href="samples.txt" download>download .txt</a>
         </div>
 
         <div class="inputs vega-inputs">

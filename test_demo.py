@@ -99,3 +99,9 @@ def test_vega_qwen_comparison_and_samples():
         questions = json.loads(block.split("\nQUESTIONS:\n")[1])
         assert {q["type"] for q in questions.values()} == {"boolean", "choice", "score"}
     assert "\u2014" not in samples
+
+def test_samples_loader_button():
+    text = sources()
+    assert 'id="load-samples"' in text["vega.html"] and 'id="sample-list"' in text["vega.html"]
+    assert 'const SAMPLES_URL = "samples.txt"' in text["vega.js"]
+    assert "function parseSamples(text)" in text["vega.js"] and 'samplesButton.addEventListener("click", loadSamples)' in text["vega.js"]

@@ -67,6 +67,7 @@ const DEFAULT_PRESET = "triage";
 // Qwen's direct readout labels options with letters A-T, so it can take at most 20.
 const QWEN_MAX_OPTIONS = 20;
 const QWEN_PREF_KEY = "vegaLab.compareQwen";
+const SAMPLES_URL = "samples.txt";
 
 // ─── State ───
 const app = {
@@ -90,6 +91,8 @@ const stateInput = $("#state");
 const questionsInput = $("#questions");
 const questionsError = $("#questions-error");
 const results = $("#results");
+const samplesButton = $("#load-samples");
+const sampleList = $("#sample-list");
 const worker = new Worker("vega-worker.js", { type: "module" });
 let qwenWorker = null;
 let resolveWorkerReady;
@@ -366,13 +369,64 @@ function setRunning(running) {
   renderIcons();
 }
 
-function fillPreset(name) {
-  const preset = PRESETS[name];
-  stateInput.value = typeof preset.state === "string" ? preset.state : JSON.stringify(preset.state, null, 2);
-  questionsInput.value = JSON.stringify(preset.questions, null, 2);
-  document.querySelectorAll("[data-preset]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.preset === name)));
+function fillInputs(state, questions, pressed) {
+  stateInput.value = typeof state === "string" ? state : JSON.stringify(state, null, 2);
+  questionsInput.value = JSON.stringify(questions, null, 2);
+  document.querySelectorAll("[data-preset], [data-sample]").forEach((button) => button.setAttribute("aria-pressed", String(button === pressed)));
   syncStateKind();
   showInputError("");
+}
+
+function fillPreset(name) {
+  fillInputs(PRESETS[name].state, PRESETS[name].questions, document.querySelector(`[data-preset="${name}"]`));
+}
+
+// samples.txt: "--- n. Title ---" headers, then a STATE: block and a QUESTIONS: JSON block per sample.
+function parseSamples(text) {
+  return text.split(/^--- /m).slice(1).flatMap((block) => {
+    const title = block.split("\n")[0].replace(/-+\s*$/, "").replace(/^\d+\.\s*/, "").trim();
+    const stateStart = block.indexOf("\nSTATE:\n");
+    const questionsStart = block.indexOf("\nQUESTIONS:\n");
+    if (stateStart < 0 || questionsStart < stateStart) return [];
+    try {
+      const questions = JSON.parse(block.slice(questionsStart + "\nQUESTIONS:\n".length).trim());
+      return [{ title, state: block.slice(stateStart + "\nSTATE:\n".length, questionsStart).trim(), questions }];
+    } catch {
+      return [];
+    }
+  });
+}
+
+function renderSamples(samples) {
+  sampleList.replaceChildren(...samples.map((sample, index) => {
+    const button = el("button", "btn btn-secondary", sample.title);
+    button.type = "button";
+    button.dataset.sample = String(index);
+    button.setAttribute("aria-pressed", "false");
+    button.addEventListener("click", () => {
+      fillInputs(sample.state, sample.questions, button);
+      stateInput.focus();
+    });
+    return button;
+  }));
+  sampleList.dataset.count = String(samples.length);
+  sampleList.hidden = false;
+  samplesButton.hidden = true;
+}
+
+async function loadSamples() {
+  samplesButton.disabled = true;
+  try {
+    const response = await fetch(`${SAMPLES_URL}?v=${Date.now()}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const samples = parseSamples(await response.text());
+    if (!samples.length) throw new Error("no samples found in the file");
+    renderSamples(samples);
+    sampleList.querySelector("button").focus();
+  } catch (error) {
+    samplesButton.disabled = false;
+    setSupport(`Could not load samples.txt: ${error.message}`, "error");
+  }
 }
 
 function syncStateKind() {
@@ -598,6 +652,7 @@ function addQuestion(type) {
 
 loadButton.addEventListener("click", startLoad);
 qwenButton.addEventListener("click", startQwenLoad);
+samplesButton.addEventListener("click", loadSamples);
 runButton.addEventListener("click", run);
 stateInput.addEventListener("input", syncStateKind);
 document.querySelectorAll("[data-preset]").forEach((button) => button.addEventListener("click", () => fillPreset(button.dataset.preset)));
