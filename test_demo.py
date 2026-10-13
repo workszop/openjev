@@ -139,3 +139,12 @@ def test_basal_third_model_and_picker():
     assert 'const MODEL_ORDER = ["vega", "basal", "qwen"];' in text["vega.js"] and "function nextModel()" in text["vega.js"]
     assert 'const PICK_KEY = "vegaLab.models";' in text["vega.js"] and "runnableModels()" in text["vega.js"]
     assert ".swatch-basal, .bar-basal i" in text["vega.css"]
+
+def test_vega_page_never_autoloads():
+    text = sources()
+    js = text["vega.js"]
+    init = js.split("// ─── Init ───")[1]
+    assert "startLoad" not in init and "startQwenLoad" not in init and "startBasalLoad" not in init and "loadSelected" not in init
+    for probe in js.split('case "probe":')[1:]:
+        assert "startLoad()" not in probe.split("break;")[0] and "startBasalLoad()" not in probe.split("break;")[0]
+    assert 'id="load-selected"' in text["vega.html"] and 'loadSelectedButton.addEventListener("click", loadSelected)' in js

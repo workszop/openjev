@@ -74,6 +74,7 @@ const ANSWER_KEYS = { vega: ["answer", "confidence"], basal: ["basalAnswer", "ba
 const QWEN_MAX_OPTIONS = 20;
 const PICK_KEY = "vegaLab.models";
 const QWEN_PREF_KEY = "vegaLab.compareQwen"; // older single-checkbox preference, read once
+// Nothing loads by itself: every model loads only from its own button or "load selected".
 // ?basalBase=<url> loads basal from another folder (local testing before a new revision is pinned)
 const BASAL_BASE = new URLSearchParams(location.search).get("basalBase") || "";
 const SAMPLES_URL = "samples.txt";
@@ -97,6 +98,7 @@ const app = {
 const $ = (selector) => document.querySelector(selector);
 const root = $("#vega");
 const loadButton = $("#load");
+const loadSelectedButton = $("#load-selected");
 const basalButton = $("#load-basal");
 const qwenButton = $("#load-qwen");
 const runButton = $("#run");
@@ -170,6 +172,22 @@ function syncControls() {
   for (const box of pickBoxes) box.checked = app.picked.has(box.dataset.pick);
   document.querySelectorAll("[data-legend]").forEach((item) => { item.hidden = !app.picked.has(item.dataset.legend); });
   runButton.disabled = app.running || !runnableModels().length;
+  const pending = loadableModels();
+  loadSelectedButton.disabled = !pending.length;
+  loadSelectedButton.title = pending.length ? `Load ${pending.map((m) => MODEL_NAMES[m]).join(", ")}` : "Every ticked model is loaded or loading";
+}
+
+// Ticked models that are not loaded and not loading yet.
+function loadableModels() {
+  return MODEL_ORDER.filter((m) => app.picked.has(m) && (m === "vega" ? ["idle", "error"].includes(app.phase) : ["off", "error"].includes(app[m])));
+}
+
+function loadSelected() {
+  for (const model of loadableModels()) {
+    if (model === "vega") startLoad();
+    else if (model === "basal") startBasalLoad();
+    else startQwenLoad();
+  }
 }
 
 function setPhase(phase) {
@@ -687,9 +705,8 @@ worker.addEventListener("message", ({ data }) => {
     case "probe": {
       if (app.phase !== "idle") break;
       const all = data.cached.length === data.total;
-      if (all && app.picked.has("vega")) startLoad();
-      else setModelStatus("vega", all ? "Cached. Load it to decide." : data.cached.length ? "Part of the weights is cached. Load Vega to fetch the rest." : "Not loaded yet. The first load downloads 840 MB once; later visits read it from the cache.");
-      if (!app.running) setSupport("Tick the models you want to compare and load them.");
+      setModelStatus("vega", all ? "Cached in this browser: loads without downloading." : data.cached.length ? "Part of the weights is cached. Loading fetches the rest." : "Not loaded. The first load downloads 840 MB once; later visits read it from the cache.");
+      if (!app.running) setSupport("Nothing loads by itself. Tick the models you want to compare, then press load selected.");
       break;
     }
     case "phase":
@@ -765,8 +782,7 @@ basalWorker.addEventListener("message", ({ data }) => {
     case "probe": {
       if (app.basal !== "off") break;
       const all = data.cached.length === data.total;
-      if (all && app.picked.has("basal")) startBasalLoad();
-      else setModelStatus("basal", all ? "Cached. Load it to decide." : "Optional. Needs WebGPU; downloads 1.5 GB once, then reads it from the cache.");
+      setModelStatus("basal", all ? "Cached in this browser: loads without downloading. Needs WebGPU." : "Needs WebGPU. The first load downloads 1.5 GB once; later visits read it from the cache.");
       break;
     }
     case "phase":
@@ -883,6 +899,7 @@ function addQuestion(type) {
   questionsInput.focus();
 }
 
+loadSelectedButton.addEventListener("click", loadSelected);
 loadButton.addEventListener("click", startLoad);
 basalButton.addEventListener("click", startBasalLoad);
 qwenButton.addEventListener("click", startQwenLoad);
@@ -920,4 +937,3 @@ renderIcons();
 syncControls();
 workerReady.then(() => worker.postMessage({ type: "probe" }));
 basalWorkerReady.then(() => basalWorker.postMessage({ type: "probe", base: BASAL_BASE }));
-if (app.picked.has("qwen")) startQwenLoad();

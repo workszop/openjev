@@ -62,6 +62,7 @@
       <section class="sec machine" aria-labelledby="setup-title"><div class="wrap">
         <div class="section-head sec-head">
           <h2 id="setup-title">Pick the models to compare</h2>
+          <button id="load-selected" type="button" class="btn"><i data-lucide="download" aria-hidden="true"></i> load selected</button>
         </div>
         <p id="support" class="support edu-block" role="status" aria-live="polite"><span class="support-icon"><i data-lucide="cpu" aria-hidden="true"></i></span><span id="support-text">Checking the weight caches…</span></p>
         <div class="model-grid" role="group" aria-label="Models">
@@ -91,7 +92,7 @@
               <div><dt class="edu-overline">load</dt><dd data-phase="load">–</dd></div>
               <div><dt class="edu-overline">self-check</dt><dd data-phase="check">–</dd></div>
             </dl>
-            <p class="model-status" data-status role="status" aria-live="polite">Optional. Needs WebGPU.</p>
+            <p class="model-status" data-status role="status" aria-live="polite">Checking the cache…</p>
           </article>
           <article class="model-card" data-model="qwen" data-state="off">
             <div class="model-head">
@@ -105,10 +106,10 @@
               <div><dt class="edu-overline">load</dt><dd data-phase="load">–</dd></div>
               <div><dt class="edu-overline">self-check</dt><dd data-phase="check">–</dd></div>
             </dl>
-            <p class="model-status" data-status role="status" aria-live="polite">Optional. Needs WebGPU; shares page 1's cache.</p>
+            <p class="model-status" data-status role="status" aria-live="polite">Not loaded. Needs WebGPU; shares page 1's cache (639 MB).</p>
           </article>
         </div>
-        <p class="fine">Tick a model to include it in decide; untick it to leave it out. Weights come from Hugging Face (pinned revisions) and stay in this browser's cache; inputs never leave the page. Vega's 8-bit graphs run on WebAssembly (one thread without cross-origin isolation), basal and Qwen3 on the GPU. <button id="clear-cache" type="button" class="link-btn">Delete cached Vega and basal weights</button></p>
+        <p class="fine">Nothing loads by itself: tick the models, then press <b>load selected</b> (or a card's own load button). Only ticked, loaded models decide. Weights come from Hugging Face (pinned revisions) and stay in this browser's cache; inputs never leave the page. Vega's 8-bit graphs run on WebAssembly (one thread without cross-origin isolation), basal and Qwen3 on the GPU. <button id="clear-cache" type="button" class="link-btn">Delete cached Vega and basal weights</button></p>
       </div></section>
 
       <section class="sec workbench" aria-labelledby="workbench-title"><div class="wrap">
