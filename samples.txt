@@ -1,10 +1,12 @@
-VEGA vs QWEN3 - SAMPLE DECISIONS
-================================
+DECISION SAMPLES - VEGA, BASAL-1.5-MINI, QWEN3
+=============================================
 
-How to use: open vega.html, load Vega (and Qwen3 0.6B to compare), then for each sample
-paste the STATE block into the State box and the QUESTIONS block into the Questions box
-and press decide (Ctrl+Enter). Each sample mixes boolean, choice and score questions.
-Every QUESTIONS block is valid JSON; the State box also accepts JSON (sample 6).
+How to use: open vega.html, tick the models you want to compare and press "load selected",
+then press "load samples.txt" and pick a sample (or paste the STATE block into the State box
+and the QUESTIONS block into the Questions box), and press decide (Ctrl+Enter). Each sample
+mixes boolean, choice and score questions. Every QUESTIONS block is valid JSON; the State box
+also accepts JSON (samples 6 and 12). Samples 7-12 are entirely in Polish: Polish state and
+Polish questions, option keys and descriptions.
 
 Your own file: use "open my .txt..." on the page. Write each sample as
   1. a header line that starts with three dashes and a space, then a title
@@ -247,6 +249,246 @@ QUESTIONS:
       "one",
       "two",
       "three or more"
+    ]
+  }
+}
+
+--- 7. Wezwanie z urzędu skarbowego ---------------------------------
+Termin do policzenia z dat w piśmie i rodzaj żądania urzędu.
+
+STATE:
+Naczelnik Urzędu Skarbowego wzywa Panią do przedłożenia w terminie 7 dni od dnia doręczenia niniejszego wezwania dokumentów potwierdzających poniesienie wydatków na termomodernizację budynku jednorodzinnego (faktury i potwierdzenia zapłaty), odliczonych w zeznaniu PIT-37 za 2025 r. Wezwanie doręczono 2 października 2026 r. (piątek). Odpowiedź z kompletem faktur nadano w placówce pocztowej 8 października 2026 r. (czwartek). Niezastosowanie się do wezwania może skutkować nałożeniem kary porządkowej.
+
+QUESTIONS:
+{
+  "w_terminie": {
+    "type": "boolean",
+    "instructions": "Czy odpowiedź na wezwanie wysłano w terminie?",
+    "criteria": {
+      "false": "nie, po upływie terminu",
+      "true": "tak, w terminie"
+    }
+  },
+  "czego_dotyczy": {
+    "type": "choice",
+    "instructions": "Czego żąda urząd w tym wezwaniu?",
+    "criteria": {
+      "dokumenty": "przedłożenia dokumentów lub dowodów",
+      "zapłata": "zapłaty zaległego podatku",
+      "korekta": "złożenia korekty zeznania",
+      "wyjaśnienia": "pisemnych wyjaśnień bez dokumentów",
+      "stawiennictwo": "osobistego stawiennictwa w urzędzie"
+    }
+  },
+  "pilność": {
+    "type": "score",
+    "instructions": "Jak pilna była ta sprawa w dniu doręczenia wezwania?",
+    "criteria": [
+      "niska – można odłożyć",
+      "średnia – w ciągu miesiąca",
+      "wysoka – w ciągu tygodnia",
+      "krytyczna – natychmiast"
+    ]
+  }
+}
+
+--- 8. Awaria systemu kasowego w sieci sklepów ----------------------
+Zgłoszenie do działu IT: wybór kolejki, priorytet i zasięg awarii.
+
+STATE:
+Od 8:15 w 12 sklepach w województwie mazowieckim terminale płatnicze odrzucają karty z komunikatem „brak połączenia z hostem”. Gotówka działa. Kierownicy zgłaszają kolejki do kas i klientów odchodzących bez zakupów. Wczoraj wieczorem zespół sieci zmieniał konfigurację zapory w centrali. W pozostałych 40 sklepach płatności działają normalnie.
+
+QUESTIONS:
+{
+  "kolejka": {
+    "type": "choice",
+    "instructions": "Do którego zespołu skierować to zgłoszenie w pierwszej kolejności?",
+    "criteria": {
+      "sieć": "łącza, zapory, VPN, routing",
+      "płatności": "terminale i operator kart",
+      "sprzęt": "kasy, drukarki, czytniki",
+      "oprogramowanie": "system kasowy i aktualizacje",
+      "bezpieczeństwo": "incydenty i ataki",
+      "inne": "żadne z powyższych"
+    }
+  },
+  "priorytet": {
+    "type": "score",
+    "instructions": "Jaki priorytet nadać temu zgłoszeniu?",
+    "criteria": [
+      "niski",
+      "normalny",
+      "wysoki",
+      "krytyczny"
+    ]
+  },
+  "wiele_lokalizacji": {
+    "type": "boolean",
+    "instructions": "Czy awaria dotyczy więcej niż jednego sklepu?",
+    "criteria": null
+  }
+}
+
+--- 9. Opinia o zakupie w sklepie internetowym ---------------------
+Mieszana recenzja: ocena ogólna, główny zarzut i czy klient poleca sklep.
+
+STATE:
+Odkurzacz przyszedł szybko, już następnego dnia, i dobrze zapakowany. Ssie naprawdę mocno, a bateria wystarcza na całe mieszkanie. Niestety po tygodniu zaczęła piszczeć ładowarka, a sklep przez 10 dni nie odpowiedział na maila w sprawie reklamacji. Dopiero po telefonie przysłali nową ładowarkę. Sam sprzęt polecam, ale obsługi klienta w tym sklepie nie.
+
+QUESTIONS:
+{
+  "ocena": {
+    "type": "score",
+    "instructions": "Jak pozytywna jest ta opinia ogólnie?",
+    "criteria": [
+      "bardzo negatywna",
+      "negatywna",
+      "mieszana",
+      "pozytywna",
+      "bardzo pozytywna"
+    ]
+  },
+  "główny_zarzut": {
+    "type": "choice",
+    "instructions": "Na co klient narzeka najbardziej?",
+    "criteria": {
+      "dostawa": "czas dostawy lub uszkodzenie paczki",
+      "produkt": "działanie lub jakość samego urządzenia",
+      "obsługa": "kontakt ze sklepem i reklamacja",
+      "cena": "stosunek ceny do jakości",
+      "opis": "niezgodność z opisem w sklepie"
+    }
+  },
+  "poleca_sklep": {
+    "type": "boolean",
+    "instructions": "Czy klient poleca ten sklep (a nie tylko produkt)?",
+    "criteria": {
+      "false": "nie poleca sklepu",
+      "true": "poleca sklep"
+    }
+  }
+}
+
+--- 10. Żądanie dotyczące danych osobowych (RODO) ------------------
+Kilka żądań w jednym mailu: rodzaj sprawy, czy żądań jest więcej niż jedno, ryzyko.
+
+STATE:
+Szanowni Państwo, od miesiąca dostaję od Was SMS-y z ofertami pożyczek, choć nigdy nie wyrażałem na to zgody. Na podstawie RODO proszę o informację, skąd macie mój numer telefonu i komu go przekazaliście, a następnie o usunięcie wszystkich moich danych. Jeśli nie dostanę odpowiedzi w ustawowym terminie, złożę skargę do Prezesa UODO. Jan Kowalski, tel. 600 100 200.
+
+QUESTIONS:
+{
+  "rodzaj_żądania": {
+    "type": "choice",
+    "instructions": "Które żądanie jest w tym mailu najważniejsze dla klienta?",
+    "criteria": {
+      "usunięcie": "usunięcie danych (prawo do bycia zapomnianym)",
+      "dostęp": "informacja o danych, ich źródle i odbiorcach",
+      "sprostowanie": "poprawienie błędnych danych",
+      "sprzeciw": "tylko wstrzymanie marketingu",
+      "przeniesienie": "przekazanie danych innej firmie"
+    }
+  },
+  "wiele_żądań": {
+    "type": "boolean",
+    "instructions": "Czy klient zgłasza więcej niż jedno żądanie z RODO?",
+    "criteria": null
+  },
+  "ryzyko_prawne": {
+    "type": "score",
+    "instructions": "Jak duże jest ryzyko prawne dla firmy, jeśli sprawa zostanie zignorowana?",
+    "criteria": [
+      "znikome",
+      "niskie",
+      "średnie",
+      "wysokie"
+    ]
+  }
+}
+
+--- 11. SMS o dopłacie do przesyłki --------------------------------
+Typowy polski SMS-owy phishing: czy to oszustwo, czego dotyczy i jak groźny jest.
+
+STATE:
+InPost: Twoja przesyłka nr 6200 1834 zostala wstrzymana z powodu niedoplaty 1,99 zl. Ureguluj platnosc w ciagu 24h, inaczej paczka wroci do nadawcy: https://inpost-dopłata.com-pl.info/p/6200
+
+QUESTIONS:
+{
+  "oszustwo": {
+    "type": "boolean",
+    "instructions": "Czy ta wiadomość to próba oszustwa (phishing)?",
+    "criteria": null
+  },
+  "czego_chce": {
+    "type": "choice",
+    "instructions": "Do czego nakłania nadawca wiadomości?",
+    "criteria": {
+      "płatność": "zapłaty kartą lub przelewem przez link",
+      "logowanie": "zalogowania się do konta lub banku",
+      "aplikacja": "instalacji aplikacji",
+      "kontakt": "oddzwonienia lub odpisania",
+      "informacja": "niczego, to tylko informacja"
+    }
+  },
+  "zagrożenie": {
+    "type": "score",
+    "instructions": "Jak groźne jest kliknięcie w ten link dla odbiorcy?",
+    "criteria": [
+      "brak zagrożenia",
+      "niewielkie",
+      "poważne",
+      "bardzo poważne"
+    ]
+  }
+}
+
+--- 12. Zgłoszenie szkody z polisy (JSON) --------------------------
+Stan w JSON z polskimi kluczami: daty polisy kontra data zdarzenia.
+
+STATE:
+{
+  "polisa": {
+    "numer": "AC/2025/48812",
+    "zakres": ["OC", "AC"],
+    "ważna_od": "2025-10-01",
+    "ważna_do": "2026-09-30"
+  },
+  "zgłoszenie": {
+    "data_zdarzenia": "2026-10-02",
+    "opis": "Podczas parkowania na parkingu pod blokiem uderzyłem tyłem w słupek. Wgnieciony zderzak i pęknięta lampa.",
+    "szacowany_koszt_zł": 4200,
+    "inne_pojazdy": false
+  }
+}
+
+QUESTIONS:
+{
+  "objęte_ochroną": {
+    "type": "boolean",
+    "instructions": "Czy w dniu zdarzenia polisa była ważna?",
+    "criteria": {
+      "false": "nie, polisa już wygasła",
+      "true": "tak, polisa była ważna"
+    }
+  },
+  "rodzaj_szkody": {
+    "type": "choice",
+    "instructions": "Jakiego rodzaju jest ta szkoda?",
+    "criteria": {
+      "parkingowa": "uszkodzenie własnego auta przy manewrowaniu",
+      "kolizja": "zderzenie z innym pojazdem",
+      "kradzież": "kradzież pojazdu lub części",
+      "żywioł": "grad, powódź, wichura",
+      "wandalizm": "celowe zniszczenie przez osoby trzecie"
+    }
+  },
+  "kwota": {
+    "type": "score",
+    "instructions": "Jak duża jest szacowana kwota szkody?",
+    "criteria": [
+      "do 1000 zł",
+      "1000-5000 zł",
+      "5000-20000 zł",
+      "ponad 20000 zł"
     ]
   }
 }

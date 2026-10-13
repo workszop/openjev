@@ -94,7 +94,7 @@ def test_vega_qwen_comparison_and_samples():
     assert 'href="samples.txt"' in text["vega.html"]
     samples = (WEBGPU / "samples.txt").read_text()
     blocks = samples.split("\n--- ")[1:]
-    assert len(blocks) == 6
+    assert len(blocks) == 12
     for block in blocks:
         questions = json.loads(block.split("\nQUESTIONS:\n")[1])
         assert {q["type"] for q in questions.values()} == {"boolean", "choice", "score"}
@@ -148,3 +148,16 @@ def test_vega_page_never_autoloads():
     for probe in js.split('case "probe":')[1:]:
         assert "startLoad()" not in probe.split("break;")[0] and "startBasalLoad()" not in probe.split("break;")[0]
     assert 'id="load-selected"' in text["vega.html"] and 'loadSelectedButton.addEventListener("click", loadSelected)' in js
+
+def test_polish_samples_are_fully_polish():
+    import json
+    polish = set("ąćęłńóśźżĄĆĘŁŃÓŚŹŻ")
+    blocks = (WEBGPU / "samples.txt").read_text().split("\n--- ")[7:]
+    assert len(blocks) == 6
+    for block in blocks:
+        state = block.split("\nSTATE:\n")[1].split("\nQUESTIONS:\n")[0]
+        questions = json.loads(block.split("\nQUESTIONS:\n")[1])
+        assert polish & set(state) and polish & set(json.dumps(questions, ensure_ascii=False))
+        for q in questions.values():
+            options = q["criteria"] if isinstance(q["criteria"], list) else list((q["criteria"] or {}).values())
+            assert len(options) <= 10

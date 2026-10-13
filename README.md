@@ -74,7 +74,7 @@ Limits: at most 8 questions per run, 2-32 options per question (basal skips ques
 
 ### Samples (`samples.txt`)
 
-[`samples.txt`](samples.txt) has six ready-made decisions, each mixing all three question types:
+[`samples.txt`](samples.txt) has twelve ready-made decisions, each mixing all three question types. Samples 7-12 are entirely in Polish: Polish state and Polish questions, option keys and descriptions (basal then reads them with its Polish prompt).
 
 1. Hotel review
 2. IT helpdesk ticket
@@ -82,6 +82,12 @@ Limits: at most 8 questions per run, 2-32 options per question (basal skips ques
 4. Contract clause
 5. Social media comment (moderation)
 6. Meeting notes as a JSON state
+7. Wezwanie z urzędu skarbowego (a 7-day deadline to count from the dates)
+8. Awaria systemu kasowego w sieci sklepów (queue, priority, scope)
+9. Opinia o zakupie w sklepie internetowym (product vs shop)
+10. Żądanie dotyczące danych osobowych (RODO, several requests in one email)
+11. SMS o dopłacie do przesyłki (parcel-fee phishing)
+12. Zgłoszenie szkody z polisy, a JSON state with Polish keys (policy dates vs the date of the incident)
 
 **load samples.txt** turns them into buttons that fill both boxes. **open my .txt…** does the same for a file of your own, read in the browser and never uploaded (up to 2 MB, Windows line endings are fine). The format:
 
@@ -138,7 +144,7 @@ No build step, API, database, telemetry, or server-side inference is used.
 | `vega.html`, `vega.js`, `vega-worker.js`, `vega.css` | Page 2 and its Vega worker (onnxruntime-web, wasm) |
 | `basal-worker.js` | Page 2's basal worker (onnxruntime-web, WebGPU) |
 | `py-json.js` | Python-style `json.dumps`, shared by both decision workers |
-| `samples.txt` | Six sample decisions and the format for your own files |
+| `samples.txt` | Twelve sample decisions (six in Polish) and the format for your own files |
 | `tokens.css`, `style.css` | Shared edulab tokens and styles |
 | `favicon.svg`, `favicon-16.png`, `favicon-32.png`, `apple-touch-icon.png`, `icon-512.png` | The "if" favicon set |
 | `vendor/wllama/` | wllama 3.6.1, vendored |
