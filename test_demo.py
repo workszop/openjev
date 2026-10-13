@@ -82,3 +82,20 @@ def test_vega_page_pins_and_contract():
     assert 'aria-live="polite"' in text["vega.html"] and "Control+Enter" in text["vega.html"]
     for name in ("vega.html", "vega.js", "vega-worker.js", "vega.css"):
         assert "\u2014" not in text[name]
+
+def test_vega_qwen_comparison_and_samples():
+    import json
+    text = sources()
+    assert 'new Worker("worker.js", { type: "module" })' in text["vega.js"]
+    assert 'data.type === "direct"' in text["worker.js"] and 'send("direct-result"' in text["worker.js"]
+    assert 'id="load-qwen"' in text["vega.html"] and 'data-qwen-state="off"' in text["vega.html"]
+    assert "const QWEN_MAX_OPTIONS = 20" in text["vega.js"] and "function nextQwen()" in text["vega.js"]
+    assert 'if (data.type === "plan")' in text["vega-worker.js"]
+    assert 'href="samples.txt"' in text["vega.html"]
+    samples = (WEBGPU / "samples.txt").read_text()
+    blocks = samples.split("\n--- ")[1:]
+    assert len(blocks) == 6
+    for block in blocks:
+        questions = json.loads(block.split("\nQUESTIONS:\n")[1])
+        assert {q["type"] for q in questions.values()} == {"boolean", "choice", "score"}
+    assert "\u2014" not in samples

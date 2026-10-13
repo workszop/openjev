@@ -371,6 +371,15 @@ async function decide(state, questions, onAnswer) {
   return { answers, tokens, ms: performance.now() - t0 };
 }
 
+// Validated questions with the exact option texts Vega reads; needs no weights, so it works before load.
+function plan(state, questions) {
+  validateRequest(state, questions);
+  return Object.fromEntries(Object.entries(questions).map(([qid, question]) => {
+    const q = toInternal(question);
+    return [qid, { type: q.t, instructions: q.ins, options: optionTexts(q), labels: labelsFor(q).map(String) }];
+  }));
+}
+
 async function selfCheck() {
   const result = await decide(SELF_CHECK.state, SELF_CHECK.questions);
   const problems = [];
@@ -426,6 +435,12 @@ async function load() {
 
 // ─── Listeners ───
 self.addEventListener("message", ({ data }) => {
+  // planning needs no sessions, so it answers even while the weights are still loading
+  if (data.type === "plan") {
+    try { send("plan", { runId: data.runId, questions: plan(data.state, data.questions) }); }
+    catch (error) { send("error", { runId: data.runId, during: "plan", message: error?.message || String(error) }); }
+    return;
+  }
   // one job at a time: concurrent runs on the same sessions would interleave
   busy = busy.then(async () => {
     try {

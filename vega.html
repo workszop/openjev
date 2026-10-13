@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap">
     <link rel="stylesheet" href="tokens.css?v=3" />
     <link rel="stylesheet" href="style.css?v=9" />
-    <link rel="stylesheet" href="vega.css?v=1" />
+    <link rel="stylesheet" href="vega.css?v=2" />
   </head>
   <body class="edu">
     <header class="edu-header">
@@ -26,7 +26,7 @@
       </div>
     </header>
 
-    <main class="page" id="vega" data-vega-state="idle" data-selfcheck="pending" data-run-count="0">
+    <main class="page" id="vega" data-vega-state="idle" data-selfcheck="pending" data-qwen-state="off" data-running="false" data-run-count="0">
       <header class="page-header">
         <h1 class="app-title">A model that only decides</h1>
         <p class="edu-lead">Vega never writes text. A frozen Qwen3.5 0.8B reads your state and a typed question once, then a small physics engine settles a particle into one of the options you listed. Every answer is a calibrated probability with a prediction set and an abstain flag.</p>
@@ -64,6 +64,10 @@
           <div class="phase"><small class="edu-overline">model load</small><strong id="load-value">–</strong><span id="load-detail">onnxruntime-web · wasm</span></div>
           <div class="phase"><small class="edu-overline">self-check</small><strong id="check-value">–</strong><span id="check-detail">3 reference answers must match</span></div>
         </div>
+        <div id="qwen-setup" class="compare-setup">
+          <div><span class="edu-overline">compare with</span><strong>Qwen3 0.6B · direct readout</strong><span id="qwen-status">Optional. The model from page 1 answers the same questions on WebGPU by reading its option-letter logits. 639 MB, shared with page 1's cache.</span></div>
+          <button id="load-qwen" type="button" class="btn btn-secondary"><i data-lucide="git-compare" aria-hidden="true"></i> load Qwen3 0.6B</button>
+        </div>
         <p class="fine">Weights come from Hugging Face (pinned revision) and stay in this browser's cache. Inputs never leave the page. The 8-bit graphs run on WebAssembly only; without cross-origin isolation the runtime uses one thread, so a short question takes a few seconds. <button id="clear-cache" type="button" class="link-btn">Delete cached weights</button></p>
       </div></section>
 
@@ -81,6 +85,7 @@
           <button type="button" class="btn btn-secondary" data-preset="review">Review scoring</button>
           <button type="button" class="btn btn-secondary" data-preset="escalation">JSON state</button>
           <button type="button" class="btn btn-secondary" data-preset="intent">Banking intent</button>
+          <a class="samples-link" href="samples.txt" download>more samples (.txt)</a>
         </div>
 
         <div class="inputs vega-inputs">
@@ -97,13 +102,14 @@
         <p id="questions-error" class="input-error" role="alert" hidden></p>
         <p id="questions-help" class="fine">Each question is <code>{"type", "instructions", "criteria"}</code>. A <b>choice</b> takes a list of labels or an object of label → description; a <b>score</b> takes ordered levels, lowest first; a <b>boolean</b> takes <code>null</code> or <code>{"false": …, "true": …}</code>. A state that parses as a JSON object or array is passed as structured data. One forward pass per question.</p>
 
+        <p class="legend" aria-hidden="true"><span><i class="swatch swatch-vega"></i>Vega 0.8B · calibrated</span><span><i class="swatch swatch-qwen"></i>Qwen3 0.6B · softmax over option letters</span></p>
         <section id="results" class="answers" aria-label="Answers" aria-live="polite" data-count="0">
-          <p class="answers-empty">Load the model, then press decide. Answers appear here one question at a time.</p>
+          <p class="answers-empty">Load the model, then press decide. Answers appear here one question at a time. Load Qwen3 0.6B as well to see both models on every question.</p>
         </section>
 
         <section class="verdict edu-block" aria-live="polite">
           <span class="edu-overline">measured in this tab</span><strong id="verdict">no run yet</strong>
-          <p id="verdict-note">Each question is one embed, decoder and engine pass over the full prompt. No token is generated, so the cost does not grow with the answer.</p>
+          <p id="verdict-note">Vega runs first on the CPU, then Qwen3 on the GPU, one question at a time, so neither slows the other. Neither generates text.</p>
         </section>
 
         <details class="card raw">
@@ -120,6 +126,16 @@
           <p>A frozen <b>Qwen3.5 0.8B</b> runs once over that prompt and stops at layer 19; its language-model head never runs. The page averages hidden states over the state span, the question span and each option span, and keeps the last token.</p>
           <p>A 14M-parameter <b>engine</b> places a particle in a 64-dimensional decision space, puts one Gaussian well under each option and integrates 12 damped steps. The share of the particle in each well is the answer, softened by a temperature fitted to how settled it is (<b>thermal calibration</b>).</p>
           <p>Two adapters, <b>public_intents</b> and <b>typed_decisions</b>, each have a gate. When a gate opens past 0.5, that adapter and its own calibration take over; the card shows which one answered.</p>
+        </div>
+      </details>
+
+      <details class="card">
+        <summary>Why Vega and Qwen3 can disagree</summary>
+        <div class="details-prose">
+          <p>Both see the same state, the same instructions and the same option texts, word for word (for a boolean: "no - …" and "yes - …"; for a score: "level 0 - …" and up). They read them differently.</p>
+          <p><b>Qwen3 0.6B</b> gets a chat prompt that lists the options as letters A, B, C and asks for one letter. Its numbers are the softmax of its next-token logits over those letters: a real readout, but not calibrated, and sensitive to option order and wording.</p>
+          <p><b>Vega</b> never answers in words. It reads hidden states of a frozen Qwen3.5 0.8B and lets a trained engine settle on an option, then applies a temperature fitted on held-out data, so its confidence is meant to match how often it is right. It also tells you when to abstain.</p>
+          <p>So agreement on the top answer is the useful signal; the probabilities themselves are on different scales. A score question is compared on its most likely level.</p>
         </div>
       </details>
 

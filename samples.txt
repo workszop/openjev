@@ -1,0 +1,245 @@
+VEGA vs QWEN3 - SAMPLE DECISIONS
+================================
+
+How to use: open vega.html, load Vega (and Qwen3 0.6B to compare), then for each sample
+paste the STATE block into the State box and the QUESTIONS block into the Questions box
+and press decide (Ctrl+Enter). Each sample mixes boolean, choice and score questions.
+Every QUESTIONS block is valid JSON; the State box also accepts JSON (sample 6).
+
+--- 1. Hotel review ------------------------------------------------
+A mixed review: tests score vs choice vs boolean on the same text.
+
+STATE:
+Stayed three nights in March. The room was spotless and the bed was great, and the staff at reception went out of their way to find us a late checkout. Breakfast was the weak point: the same cold eggs every day and the coffee machine was broken twice. The location near the old town is perfect, but the street noise until 2 am made it hard to sleep with the window open. For the price I would probably come back, but I would ask for a room at the back.
+
+QUESTIONS:
+{
+  "rating": {
+    "type": "score",
+    "instructions": "How positive is this review overall?",
+    "criteria": [
+      "very negative",
+      "negative",
+      "mixed",
+      "positive",
+      "very positive"
+    ]
+  },
+  "main_complaint": {
+    "type": "choice",
+    "instructions": "What does the guest complain about most?",
+    "criteria": {
+      "cleanliness": "dirty rooms or bathrooms",
+      "food": "breakfast, restaurant, drinks",
+      "noise": "street, neighbours, building noise",
+      "staff": "rude or unhelpful staff",
+      "price": "poor value for money"
+    }
+  },
+  "would_return": {
+    "type": "boolean",
+    "instructions": "Does the guest say they would stay here again?",
+    "criteria": null
+  }
+}
+
+--- 2. IT helpdesk ticket ------------------------------------------
+Routing with eight queues plus urgency; the text names two problems.
+
+STATE:
+Since this morning's Windows update my laptop won't connect to the office VPN (error 809). I can still reach Outlook on my phone. I also noticed the printer on floor 3 is printing everything in light grey again. I have a client presentation at 14:00 and need the shared drive for it.
+
+QUESTIONS:
+{
+  "queue": {
+    "type": "choice",
+    "instructions": "Which helpdesk queue should take this ticket first?",
+    "criteria": {
+      "network": "VPN, wifi, connectivity",
+      "accounts": "passwords, MFA, access rights",
+      "hardware": "laptops, printers, peripherals",
+      "email": "Outlook, mailboxes, calendars",
+      "software": "installs, updates, licences",
+      "security": "phishing, malware, incidents",
+      "facilities": "rooms, desks, AV equipment",
+      "other": "none of the above"
+    }
+  },
+  "urgency": {
+    "type": "score",
+    "instructions": "How urgent is this ticket?",
+    "criteria": [
+      "can wait a week",
+      "this week",
+      "today",
+      "within the hour"
+    ]
+  },
+  "multiple_issues": {
+    "type": "boolean",
+    "instructions": "Does the ticket report more than one separate problem?",
+    "criteria": {
+      "false": "one problem",
+      "true": "two or more unrelated problems"
+    }
+  }
+}
+
+--- 3. Polish customer complaint (reklamacja) ----------------------
+Polish state, English questions: shows how both models handle another language.
+
+STATE:
+Dzień dobry, zamówiłem pralkę 2 tygodnie temu, kurier przywiózł ją z wgniecionym bokiem, a przy pierwszym praniu wyciekła woda na całą łazienkę. Dzwoniłem dwa razy na infolinię i nikt nie oddzwonił. Żądam wymiany na nowy egzemplarz albo zwrotu pieniędzy. Jeśli do piątku nie dostanę odpowiedzi, zgłaszam sprawę do rzecznika konsumentów.
+
+QUESTIONS:
+{
+  "request": {
+    "type": "choice",
+    "instructions": "What does the customer ask for?",
+    "criteria": {
+      "replacement_or_refund": "a new unit or the money back",
+      "repair": "fix the existing unit",
+      "discount": "a partial refund, keep the product",
+      "information": "only wants an answer or status",
+      "cancel_order": "cancel before delivery"
+    }
+  },
+  "escalation_threat": {
+    "type": "boolean",
+    "instructions": "Does the customer threaten to escalate to an outside authority?",
+    "criteria": null
+  },
+  "anger": {
+    "type": "score",
+    "instructions": "How angry is the customer?",
+    "criteria": [
+      "calm",
+      "annoyed",
+      "angry",
+      "furious"
+    ]
+  }
+}
+
+--- 4. Contract clause ---------------------------------------------
+Legal-style text; boolean with explicit criteria and a risk score.
+
+STATE:
+14.2 Either party may terminate this Agreement for convenience on ninety (90) days' written notice. 14.3 Upon termination for any reason, the Customer shall pay all fees for the remainder of the then-current Subscription Term, which shall become immediately due. 14.4 The Supplier may suspend the Services without notice if any invoice is more than ten (10) days overdue.
+
+QUESTIONS:
+{
+  "customer_can_exit": {
+    "type": "boolean",
+    "instructions": "Can the customer leave the contract early without paying for the rest of the term?",
+    "criteria": {
+      "false": "early exit still costs the remaining fees",
+      "true": "early exit costs nothing extra"
+    }
+  },
+  "risk_for_customer": {
+    "type": "score",
+    "instructions": "How risky are these clauses for the customer?",
+    "criteria": [
+      "low",
+      "moderate",
+      "high",
+      "very high"
+    ]
+  },
+  "riskiest_clause": {
+    "type": "choice",
+    "instructions": "Which clause is worst for the customer?",
+    "criteria": {
+      "14.2": "termination for convenience with notice",
+      "14.3": "remaining fees due on termination",
+      "14.4": "suspension without notice for late invoices"
+    }
+  }
+}
+
+--- 5. Social media comment ----------------------------------------
+Moderation: an aggressive but not abusive comment, to see where the models draw the line.
+
+STATE:
+Your 'update' broke the app AGAIN. Third time this month. Whoever signed off on this release should be fired, honestly. I'm cancelling my subscription today and telling everyone I know to do the same.
+
+QUESTIONS:
+{
+  "action": {
+    "type": "choice",
+    "instructions": "What should the moderator do with this comment?",
+    "criteria": {
+      "keep": "acceptable criticism, leave it up",
+      "reply": "keep it and answer from the brand account",
+      "hide": "hide it from public view",
+      "remove": "delete it and warn the user"
+    }
+  },
+  "abusive": {
+    "type": "boolean",
+    "instructions": "Does the comment contain abuse, threats or slurs against a person?",
+    "criteria": null
+  },
+  "churn": {
+    "type": "score",
+    "instructions": "How likely is this user to cancel?",
+    "criteria": [
+      "not at all",
+      "unlikely",
+      "possible",
+      "likely",
+      "certain"
+    ]
+  }
+}
+
+--- 6. Meeting notes (JSON state) ----------------------------------
+A structured state: paste the JSON into the State box and it is passed as an object.
+
+STATE:
+{
+  "meeting": "Q3 launch sync",
+  "date": "2026-10-12",
+  "attendees": [
+    "Ola",
+    "Marek",
+    "Priya"
+  ],
+  "notes": [
+    "Landing page copy still not approved by legal",
+    "Marek will book the photographer by Friday",
+    "Budget for ads cut by 20%, Priya to rework the plan",
+    "Launch date stays 2026-11-03 unless legal blocks the copy"
+  ]
+}
+
+QUESTIONS:
+{
+  "launch_at_risk": {
+    "type": "boolean",
+    "instructions": "Is the launch date at risk?",
+    "criteria": null
+  },
+  "blocker": {
+    "type": "choice",
+    "instructions": "What is the main blocker right now?",
+    "criteria": {
+      "legal": "approval from legal",
+      "budget": "money for ads",
+      "content": "photos or copy not produced",
+      "people": "missing staff",
+      "none": "nothing is blocking"
+    }
+  },
+  "followups": {
+    "type": "score",
+    "instructions": "How many concrete action items with an owner do the notes contain?",
+    "criteria": [
+      "none",
+      "one",
+      "two",
+      "three or more"
+    ]
+  }
+}

@@ -212,13 +212,17 @@ self.addEventListener("message", async ({ data }) => {
   try {
     if (data.type === "load") await load(data.useLocal);
     if (data.type === "compare") await compare(data.data);
+    if (data.type === "direct") {
+      if (!engine) throw new Error("Load the model before running a readout.");
+      send("direct-result", { runId: data.runId, qid: data.qid, ...(await directScore(data.data)) });
+    }
   } catch (error) {
     if (data.type === "load" && engine) {
       try { await engine.exit(); } catch (_) { /* best-effort cleanup after a failed load */ }
       engine = undefined;
     }
     console.error(error);
-    send("error", { message: error?.message ?? String(error) });
+    send("error", { message: error?.message ?? String(error), during: data.type, runId: data.runId, qid: data.qid });
   }
 });
 
