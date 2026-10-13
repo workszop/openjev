@@ -1,4 +1,5 @@
-// Vega decisions page: UI over vega-worker.js, with Qwen3 0.6B (worker.js, page 1) as an optional comparison.
+// Vega decisions page: UI over vega-worker.js (Vega 0.8B), basal-worker.js (basal-1.5-mini) and worker.js
+// (Qwen3 0.6B, page 1). The user ticks which models decide; each runs in turn on the same plan.
 // Publishes its state on #vega via data-* attributes.
 
 // ─── Constants ───
@@ -64,9 +65,17 @@ const TEMPLATES = {
 };
 const TYPE_CHIP = { boolean: "chip-blue", choice: "chip-green", score: "chip-yellow" };
 const DEFAULT_PRESET = "triage";
+const MODEL_ORDER = ["vega", "basal", "qwen"];
+const MODEL_NAMES = { vega: "Vega 0.8B", basal: "basal-1.5-mini", qwen: "Qwen3 0.6B" };
+const MODEL_SHORT = { vega: "Vega", basal: "basal", qwen: "Qwen3" };
+// card data-* keys per model, so an agent can read every lane's answer without parsing text
+const ANSWER_KEYS = { vega: ["answer", "confidence"], basal: ["basalAnswer", "basalConfidence"], qwen: ["qwenAnswer", "qwenConfidence"] };
 // Qwen's direct readout labels options with letters A-T, so it can take at most 20.
 const QWEN_MAX_OPTIONS = 20;
-const QWEN_PREF_KEY = "vegaLab.compareQwen";
+const PICK_KEY = "vegaLab.models";
+const QWEN_PREF_KEY = "vegaLab.compareQwen"; // older single-checkbox preference, read once
+// ?basalBase=<url> loads basal from another folder (local testing before a new revision is pinned)
+const BASAL_BASE = new URLSearchParams(location.search).get("basalBase") || "";
 const SAMPLES_URL = "samples.txt";
 const MAX_SAMPLE_FILE_BYTES = 2_000_000;
 
@@ -74,11 +83,13 @@ const MAX_SAMPLE_FILE_BYTES = 2_000_000;
 const app = {
   phase: "idle", // Vega: idle → loading → checking → ready, or error
   qwen: "off", // Qwen3: off → loading → ready, or error / unsupported
+  basal: "off", // basal: off → loading → checking → ready, or error / unsupported
+  picked: new Set(["vega"]),
   running: false,
-  files: new Map(),
+  files: { vega: new Map(), basal: new Map() },
   runId: 0,
   runCount: 0,
-  run: null, // { state, stateText, questions, plan, vega: {}, qwen: {}, queue: [], vegaMs, qwenMs, errors }
+  run: null, // { state, stateText, questions, plan, models, todo, answers: {model: {qid: answer}}, ms: {model}, queue, errors }
   ready: false,
 };
 
@@ -86,6 +97,7 @@ const app = {
 const $ = (selector) => document.querySelector(selector);
 const root = $("#vega");
 const loadButton = $("#load");
+const basalButton = $("#load-basal");
 const qwenButton = $("#load-qwen");
 const runButton = $("#run");
 const stateInput = $("#state");
@@ -95,10 +107,14 @@ const results = $("#results");
 const samplesButton = $("#load-samples");
 const sampleList = $("#sample-list");
 const sampleFile = $("#sample-file");
+const pickBoxes = [...document.querySelectorAll("[data-pick]")];
 const worker = new Worker("vega-worker.js", { type: "module" });
+const basalWorker = new Worker("basal-worker.js", { type: "module" });
 let qwenWorker = null;
 let resolveWorkerReady;
 const workerReady = new Promise((resolve) => { resolveWorkerReady = resolve; });
+let resolveBasalReady;
+const basalWorkerReady = new Promise((resolve) => { resolveBasalReady = resolve; });
 let resolveQwenReady;
 const qwenWorkerReady = new Promise((resolve) => { resolveQwenReady = resolve; });
 
@@ -108,6 +124,7 @@ const megabytes = (bytes) => `${Math.round(bytes / 1e6)} MB`;
 const fixed = (value, digits = 3) => (value < 0.001 && value > 0 ? "<0.001" : value.toFixed(digits));
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const argmax = (values) => values.indexOf(Math.max(...values));
+const modelCard = (model) => $(`.model-card[data-model="${model}"]`);
 
 function icon(name, extraClass = "") {
   return `<i data-lucide="${name}" class="${extraClass}" aria-hidden="true"></i>`;
@@ -122,18 +139,37 @@ function el(tag, className, text) {
   return node;
 }
 
-function readPref() {
-  try { return localStorage.getItem(QWEN_PREF_KEY) === "1"; } catch { return false; }
+function readPicks() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(PICK_KEY) || "null");
+    if (Array.isArray(stored)) return new Set(stored.filter((m) => MODEL_ORDER.includes(m)));
+    return new Set(localStorage.getItem(QWEN_PREF_KEY) === "1" ? ["vega", "qwen"] : ["vega"]);
+  } catch { return new Set(["vega"]); }
 }
-function writePref(on) {
-  try { localStorage.setItem(QWEN_PREF_KEY, on ? "1" : "0"); } catch { /* storage blocked */ }
+function writePicks() {
+  try { localStorage.setItem(PICK_KEY, JSON.stringify([...app.picked])); } catch { /* storage blocked */ }
 }
+
+function isReady(model) {
+  if (model === "vega") return app.ready;
+  return app[model] === "ready";
+}
+const runnableModels = () => MODEL_ORDER.filter((m) => app.picked.has(m) && isReady(m));
 
 function syncControls() {
   root.dataset.vegaState = app.phase;
   root.dataset.qwenState = app.qwen;
+  root.dataset.basalState = app.basal;
+  root.dataset.selected = MODEL_ORDER.filter((m) => app.picked.has(m)).join(" ");
   root.dataset.running = String(app.running);
-  runButton.disabled = app.running || !(app.ready || app.qwen === "ready");
+  for (const model of MODEL_ORDER) {
+    const card = modelCard(model);
+    card.dataset.state = model === "vega" ? app.phase : app[model];
+    card.dataset.selected = String(app.picked.has(model));
+  }
+  for (const box of pickBoxes) box.checked = app.picked.has(box.dataset.pick);
+  document.querySelectorAll("[data-legend]").forEach((item) => { item.hidden = !app.picked.has(item.dataset.legend); });
+  runButton.disabled = app.running || !runnableModels().length;
 }
 
 function setPhase(phase) {
@@ -141,13 +177,36 @@ function setPhase(phase) {
   syncControls();
 }
 
-function setQwen(state, text, kind = "") {
-  app.qwen = state;
+function setModelState(model, state) {
+  app[model] = state;
   syncControls();
-  if (text !== undefined) {
-    $("#qwen-status").textContent = text;
-    $("#qwen-setup").className = `compare-setup ${kind}`;
-  }
+}
+
+// Status line of one model card; kind "ok" or "error" colours the card.
+function setModelStatus(model, text, kind = "") {
+  const card = modelCard(model);
+  card.querySelector("[data-status]").textContent = text;
+  card.classList.toggle("ok", kind === "ok");
+  card.classList.toggle("error", kind === "error");
+}
+
+function setPhaseValue(model, phase, value, title = "") {
+  const node = modelCard(model).querySelector(`[data-phase="${phase}"]`);
+  node.textContent = value;
+  node.title = title;
+}
+
+function setMeter(model, percent) {
+  const card = modelCard(model);
+  card.querySelector("[data-meter]").style.width = `${percent}%`;
+  card.querySelector(".meter").setAttribute("aria-valuenow", percent.toFixed(0));
+}
+
+function setLoadButton(button, mode, label) {
+  button.hidden = mode === "hidden";
+  button.disabled = mode === "busy";
+  button.innerHTML = mode === "busy" ? `${icon("loader-circle", "spin")} loading…` : `${icon(mode === "retry" ? "refresh-cw" : "download")} ${label || (mode === "retry" ? "retry" : "load")}`;
+  renderIcons();
 }
 
 function setSupport(text, kind = "") {
@@ -191,7 +250,7 @@ function optionParts(question, index) {
   return { name, description: option.startsWith(prefix) ? option.slice(prefix.length) : "" };
 }
 
-// One summary line per model, comparable across both: the top option and its probability.
+// One summary line per model, comparable across models: the top option and its probability.
 function summary(question, probs) {
   const top = argmax(probs);
   if (question.type === "boolean") return { big: top ? "yes" : "no", small: `p(yes) ${fixed(probs[1])}` };
@@ -203,32 +262,27 @@ function summary(question, probs) {
 const setText = (question, set) => set.map((label) => (question.type === "boolean" ? (label ? "yes" : "no") : String(label))).join(", ");
 
 // ─── Render ───
-function renderProgress({ file, loaded, total, cached }) {
-  app.files.set(file, { loaded, total, cached });
-  const items = [...app.files.values()];
+function renderProgress(model, { file, loaded, total, cached }) {
+  const files = app.files[model];
+  files.set(file, { loaded, total, cached });
+  const items = [...files.values()];
   const sum = items.reduce((acc, item) => ({ loaded: acc.loaded + item.loaded, total: acc.total + item.total }), { loaded: 0, total: 0 });
-  const percent = sum.total ? Math.min(100, (sum.loaded / sum.total) * 100) : 0;
-  $("#download-meter").style.width = `${percent}%`;
-  $(".phase .meter").setAttribute("aria-valuenow", percent.toFixed(0));
-  const allCached = items.every((item) => item.cached);
-  $("#download-value").textContent = allCached ? "cached" : `${megabytes(sum.loaded)}`;
-  $("#download-detail").textContent = `${cached ? "from cache" : "downloading"}: ${file}`;
+  setMeter(model, sum.total ? Math.min(100, (sum.loaded / sum.total) * 100) : 0);
+  setPhaseValue(model, "download", items.every((item) => item.cached) ? "cached" : megabytes(sum.loaded), `${cached ? "from cache" : "downloading"}: ${file}`);
 }
 
-function renderSelfCheck(check) {
-  root.dataset.selfcheck = check.ok ? "pass" : "fail";
-  $("#check-value").textContent = check.ok ? "passed" : "failed";
-  $("#check-detail").textContent = check.ok
-    ? `3/3 match the reference · max |Δp| ${check.maxDelta.toFixed(3)} · ${seconds(check.ms)}`
-    : check.problems.join("; ");
+function renderSelfCheck(model, check) {
+  root.dataset[model === "vega" ? "selfcheck" : "basalSelfcheck"] = check.ok ? "pass" : "fail";
+  setPhaseValue(model, "check", check.ok ? `passed · ${seconds(check.ms)}` : "failed", check.ok ? `${check.count ?? 3} reference answers match · max |Δp| ${check.maxDelta.toFixed(3)}` : check.problems.join("; "));
 }
 
 function card(qid) {
   return results.querySelector(`.answer[data-qid="${CSS.escape(qid)}"]`);
 }
 
-// Skeleton cards straight from the plan, so both models fill the same card.
-function renderCards(plan) {
+// Skeleton cards straight from the plan, one lane per model in this run, so every model fills the same card.
+function renderCards(plan, models) {
+  results.dataset.models = models.join(" ");
   results.replaceChildren(...Object.entries(plan).map(([qid, question]) => {
     const node = el("article", "card answer");
     Object.assign(node.dataset, { qid, type: question.type });
@@ -239,9 +293,11 @@ function renderCards(plan) {
     head.lastChild.append(agree, el("span", `chip ${TYPE_CHIP[question.type]}`, question.type));
     const body = el("div", "lane-body");
     const verdicts = el("div", "verdicts");
-    for (const [model, name] of [["vega", "Vega 0.8B"], ["qwen", "Qwen3 0.6B"]]) {
+    verdicts.style.setProperty("--lanes", String(models.length));
+    verdicts.dataset.lanes = String(models.length);
+    for (const model of models) {
       const v = el("p", `v v-${model}`);
-      v.append(el("small", "edu-overline", name), el("strong", "", "…"), el("span", "", modelPending(model)));
+      v.append(el("small", "edu-overline", MODEL_NAMES[model]), el("strong", "", "…"), el("span", "", "waiting"));
       verdicts.append(v);
     }
     const dist = el("div", "dist");
@@ -253,7 +309,7 @@ function renderCards(plan) {
       label.append(el("b", "", name), el("small", "", description));
       const bars = el("span", "bars");
       const nums = el("span", "nums");
-      for (const model of ["vega", "qwen"]) {
+      for (const model of models) {
         const bar = el("span", `bar bar-${model}`);
         bar.append(el("i"));
         bars.append(bar);
@@ -267,11 +323,6 @@ function renderCards(plan) {
     return node;
   }));
   results.dataset.count = String(results.children.length);
-}
-
-function modelPending(model) {
-  if (model === "vega") return app.ready ? "waiting" : "not loaded";
-  return app.qwen === "ready" ? "waiting" : "not loaded";
 }
 
 function fillModel(qid, model, probs, line) {
@@ -288,8 +339,9 @@ function fillModel(qid, model, probs, line) {
     row.querySelector(`.num-${model}`).textContent = fixed(probs[index]);
     row.classList.toggle(`top-${model}`, index === top);
   });
-  node.dataset[model === "vega" ? "answer" : "qwenAnswer"] = question.type === "boolean" ? probs[1].toFixed(4) : question.labels[top];
-  node.dataset[model === "vega" ? "confidence" : "qwenConfidence"] = probs[top].toFixed(4);
+  const [answerKey, confidenceKey] = ANSWER_KEYS[model];
+  node.dataset[answerKey] = question.type === "boolean" ? probs[1].toFixed(4) : question.labels[top];
+  node.dataset[confidenceKey] = probs[top].toFixed(4);
   renderAgreement(qid);
 }
 
@@ -301,65 +353,89 @@ function failModel(qid, model, message) {
   v.classList.add("skipped");
 }
 
+// The largest group of models with the same top option, among the models that answered.
+function agreement(qid) {
+  const answered = app.run.models.filter((m) => app.run.answers[m][qid]);
+  const tops = answered.map((m) => argmax(app.run.answers[m][qid].probs));
+  const group = Math.max(0, ...tops.map((t) => tops.filter((x) => x === t).length));
+  return { answered: answered.length, group, all: answered.length > 1 && group === answered.length };
+}
+
 function renderAgreement(qid) {
-  const { vega, qwen } = app.run;
-  const node = card(qid);
-  const chip = node.querySelector(".agree-chip");
-  if (!vega[qid] || !qwen[qid]) return;
-  const same = argmax(vega[qid].probs) === argmax(qwen[qid].probs);
-  node.dataset.agree = String(same);
+  const { answered, group, all } = agreement(qid);
+  const chip = card(qid).querySelector(".agree-chip");
+  if (answered < 2) return;
+  card(qid).dataset.agree = String(all);
   chip.hidden = false;
-  chip.textContent = same ? "agree" : "disagree";
-  chip.className = `chip agree-chip ${same ? "chip-green" : "chip-red"}`;
+  chip.textContent = all ? "agree" : group > 1 ? `${group} of ${answered} agree` : "disagree";
+  chip.className = `chip agree-chip ${all ? "chip-green" : group > 1 ? "chip-yellow" : "chip-red"}`;
+}
+
+function addFlag(qid, name, value, warn) {
+  const item = el("div", warn ? "warn" : "");
+  item.append(el("dt", "edu-overline", name), el("dd", "", value));
+  card(qid).querySelector(".flags").append(item);
 }
 
 function renderVegaFlags(qid, answer) {
-  const node = card(qid);
-  Object.assign(node.dataset, { abstain: String(answer.abstain), unbound: String(answer.unbound), adapter: answer.adapter || "base" });
-  const flags = node.querySelector(".flags");
-  const flag = (name, value, warn) => {
-    const item = el("div", warn ? "warn" : "");
-    item.append(el("dt", "edu-overline", name), el("dd", "", value));
-    flags.append(item);
-  };
-  flag("Vega 90% set", answer.prediction_set ? setText(answer, answer.prediction_set) : "–");
-  flag("abstain", answer.abstain ? "yes" : "no", answer.abstain);
-  flag("unbound", answer.unbound ? "yes" : "no", answer.unbound);
-  flag("adapter", `${answer.adapter || "base"} · ${answer.gate.toFixed(2)}`);
+  Object.assign(card(qid).dataset, { abstain: String(answer.abstain), unbound: String(answer.unbound), adapter: answer.adapter || "base" });
+  addFlag(qid, "Vega 90% set", answer.prediction_set ? setText(answer, answer.prediction_set) : "–");
+  addFlag(qid, "Vega abstain", answer.abstain ? "yes" : "no", answer.abstain);
+  addFlag(qid, "Vega unbound", answer.unbound ? "yes" : "no", answer.unbound);
+  addFlag(qid, "Vega adapter", `${answer.adapter || "base"} · ${answer.gate.toFixed(2)}`);
+}
+
+function renderBasalFlags(qid, answer) {
+  card(qid).dataset.basalAccepted = String(answer.accepted);
+  if (answer.accepted !== null) addFlag(qid, "basal at 5% risk", answer.accepted ? "accept" : "defer to a person", !answer.accepted);
 }
 
 function renderRaw() {
-  const { plan, vega, qwen, vegaMs, qwenMs } = app.run;
+  const { plan, models, answers, ms } = app.run;
   const named = (qid, probs) => Object.fromEntries(plan[qid].labels.map((label, i) => [plan[qid].type === "boolean" ? (i ? "yes" : "no") : label, Number(probs[i].toFixed(6))]));
   const out = {};
   for (const qid of Object.keys(plan)) {
     const entry = {};
-    if (vega[qid]) {
-      const { ids, options, labels, probs, ...rest } = vega[qid];
-      entry.vega = { ...rest, probs: named(qid, probs) };
+    for (const model of models) {
+      const answer = answers[model][qid];
+      if (!answer) continue;
+      if (model === "vega") {
+        const { ids, options, labels, probs, ...rest } = answer;
+        entry.vega = { ...rest, probs: named(qid, probs) };
+      } else if (model === "basal") {
+        const { probs, ms: took, ...rest } = answer;
+        entry.basal = { ...rest, probs: named(qid, probs), ms: Math.round(took) };
+      } else {
+        entry.qwen = { probs: named(qid, answer.probs), ms: Math.round(answer.ms), tokens: answer.tokens };
+      }
     }
-    if (qwen[qid]) entry.qwen = { probs: named(qid, qwen[qid].probs), ms: Math.round(qwen[qid].ms), tokens: qwen[qid].tokens };
     out[qid] = entry;
   }
-  $("#raw").textContent = JSON.stringify({ answers: out, vega_ms: vegaMs == null ? null : Math.round(vegaMs), qwen_ms: qwenMs == null ? null : Math.round(qwenMs) }, null, 2);
+  const timing = Object.fromEntries(models.map((m) => [`${m}_ms`, ms[m] == null ? null : Math.round(ms[m])]));
+  $("#raw").textContent = JSON.stringify({ models, answers: out, ...timing }, null, 2);
   $("#raw").classList.remove("empty");
 }
 
 function renderVerdict() {
-  const { plan, vega, qwen, vegaMs, qwenMs } = app.run;
+  const { plan, models, answers, ms } = app.run;
   const ids = Object.keys(plan);
-  const both = ids.filter((qid) => vega[qid] && qwen[qid]);
-  const agree = both.filter((qid) => argmax(vega[qid].probs) === argmax(qwen[qid].probs)).length;
-  const parts = [];
-  if (vegaMs != null) parts.push(`Vega ${seconds(vegaMs)}`);
-  if (qwenMs != null) parts.push(`Qwen3 ${seconds(qwenMs)}`);
-  $("#verdict").textContent = both.length ? `top answer agrees on ${agree}/${both.length}` : parts.join(" · ") || "nothing ran";
+  const compared = ids.filter((qid) => agreement(qid).answered > 1);
+  const agree = compared.filter((qid) => agreement(qid).all).length;
+  const parts = models.filter((m) => ms[m] != null).map((m) => `${MODEL_SHORT[m]} ${seconds(ms[m])}`);
+  const who = models.length > 2 ? `all ${models.length} models` : "both models";
+  $("#verdict").textContent = compared.length ? `${who} agree on ${agree}/${compared.length}` : parts.join(" · ") || "nothing ran";
   root.dataset.agreeCount = String(agree);
   const notes = [];
   if (parts.length) notes.push(`${parts.join(", ")} for ${plural(ids.length, "question")}.`);
-  const abstained = ids.filter((qid) => vega[qid]?.abstain).length;
-  if (Object.keys(vega).length) notes.push(abstained ? `Vega abstains on ${abstained}: treat ${abstained === 1 ? "it" : "them"} as "ask a human".` : "Vega abstained on none.");
-  if (!both.length && app.qwen !== "ready") notes.push("Load Qwen3 0.6B above to compare both models on the same questions.");
+  if (models.includes("vega") && Object.keys(answers.vega).length) {
+    const abstained = ids.filter((qid) => answers.vega[qid]?.abstain).length;
+    notes.push(abstained ? `Vega abstains on ${abstained}: treat ${abstained === 1 ? "it" : "them"} as "ask a human".` : "Vega abstained on none.");
+  }
+  if (models.includes("basal") && Object.keys(answers.basal).length) {
+    const deferred = ids.filter((qid) => answers.basal[qid]?.accepted === false).length;
+    notes.push(deferred ? `basal is below its 5%-risk threshold on ${deferred}.` : "basal clears its 5%-risk threshold on every answer.");
+  }
+  if (models.length < 2) notes.push("Tick and load another model above to compare them on the same questions.");
   notes.push(...app.run.errors);
   $("#verdict-note").textContent = notes.join(" ");
 }
@@ -485,35 +561,47 @@ function syncStateKind() {
   $("#state-kind").textContent = readState().kind;
 }
 
-// ─── Run pipeline: plan → Vega (all questions) → Qwen3 (one question at a time) → finish ───
+// ─── Run pipeline: plan → each ticked, loaded model in turn (Vega, basal, Qwen3) → finish ───
 function run() {
   if (runButton.disabled) return;
   let questions;
   try { questions = readQuestions(); } catch (error) { showInputError(error.message); questionsInput.focus(); return; }
   showInputError("");
   const { state, text } = readState();
+  const models = runnableModels();
   app.runId += 1;
-  app.run = { state, stateText: text, questions, plan: null, vega: {}, qwen: {}, queue: [], vegaMs: null, qwenMs: null, errors: [] };
+  app.run = { state, stateText: text, questions, plan: null, models, todo: [...models], answers: { vega: {}, basal: {}, qwen: {} }, ms: {}, queue: [], errors: [] };
   setRunning(true);
   setSupport("Checking the questions…");
   worker.postMessage({ type: "plan", runId: app.runId, state, questions });
 }
 
+function nextModel() {
+  const model = app.run.todo.shift();
+  if (!model) return finish();
+  if (model === "vega") return startVega();
+  if (model === "basal") return startBasal();
+  return startQwen();
+}
+
 function startVega() {
-  if (!app.ready) return startQwen();
-  setSupport("Vega is reading the state once per question…");
+  setSupport("Vega is reading the state once per question on the CPU…");
   worker.postMessage({ type: "decide", runId: app.runId, state: app.run.state, questions: app.run.questions });
 }
 
+function startBasal() {
+  setSupport("basal-1.5-mini reads the state once, then each question in both option orders on WebGPU…");
+  basalWorker.postMessage({ type: "decide", runId: app.runId, state: app.run.state, questions: app.run.questions, base: BASAL_BASE });
+}
+
 function startQwen() {
-  if (app.qwen !== "ready") return finish();
   const { plan } = app.run;
   app.run.queue = Object.keys(plan).filter((qid) => {
     if (plan[qid].options.length <= QWEN_MAX_OPTIONS) return true;
     failModel(qid, "qwen", `skipped: more than ${QWEN_MAX_OPTIONS} options`);
     return false;
   });
-  app.run.qwenMs = 0;
+  app.run.ms.qwen = 0;
   setSupport("Qwen3 0.6B is reading the same options on WebGPU…");
   nextQwen();
 }
@@ -521,7 +609,7 @@ function startQwen() {
 // One readout at a time: concurrent completions on one wllama engine abort the wasm.
 function nextQwen() {
   const qid = app.run.queue.shift();
-  if (!qid) return finish();
+  if (!qid) return nextModel();
   const question = app.run.plan[qid];
   qwenWorker.postMessage({ type: "direct", runId: app.runId, qid, data: { state: app.run.stateText, question: question.instructions, options: question.options } });
 }
@@ -532,36 +620,59 @@ function finish() {
   renderRaw();
   renderVerdict();
   setRunning(false);
-  setSupport("Done. Edit the state or the questions and decide again.", "ok");
+  setSupport("Done. Edit the state or the questions, tick other models, and decide again.", "ok");
 }
 
 // ─── Model loading ───
+function pick(model, on) {
+  if (on) app.picked.add(model); else app.picked.delete(model);
+  writePicks();
+  syncControls();
+}
+
 async function startLoad() {
   if (app.phase === "loading" || app.phase === "checking" || app.ready) return;
+  pick("vega", true);
   setPhase("loading");
-  loadButton.disabled = true;
-  loadButton.innerHTML = `${icon("loader-circle", "spin")} loading…`;
-  renderIcons();
-  app.files.clear();
+  setLoadButton(loadButton, "busy");
+  app.files.vega.clear();
   await workerReady;
   worker.postMessage({ type: "load" });
 }
 
-async function startQwenLoad() {
-  if (app.qwen === "loading" || app.qwen === "ready") return;
+async function startBasalLoad() {
+  if (app.basal === "loading" || app.basal === "checking" || app.basal === "ready") return;
+  pick("basal", true);
   if (!navigator.gpu || !(await navigator.gpu.requestAdapter().catch(() => null))) {
-    setQwen("unsupported", "Qwen3 0.6B needs WebGPU, which this browser does not offer. Vega still works.", "error");
+    setModelState("basal", "unsupported");
+    setModelStatus("basal", "basal-1.5-mini needs WebGPU, which this browser does not offer.", "error");
     return;
   }
-  writePref(true);
-  setQwen("loading", "Loading Qwen3 0.6B (639 MB on the first visit, shared with page 1)…");
-  qwenButton.disabled = true;
-  qwenButton.innerHTML = `${icon("loader-circle", "spin")} loading…`;
-  renderIcons();
+  setModelState("basal", "loading");
+  setLoadButton(basalButton, "busy");
+  app.files.basal.clear();
+  await basalWorkerReady;
+  basalWorker.postMessage({ type: "load", base: BASAL_BASE });
+}
+
+async function startQwenLoad() {
+  if (app.qwen === "loading" || app.qwen === "ready") return;
+  pick("qwen", true);
+  if (!navigator.gpu || !(await navigator.gpu.requestAdapter().catch(() => null))) {
+    setModelState("qwen", "unsupported");
+    setModelStatus("qwen", "Qwen3 0.6B needs WebGPU, which this browser does not offer.", "error");
+    return;
+  }
+  setModelState("qwen", "loading");
+  setModelStatus("qwen", "Loading Qwen3 0.6B (639 MB on the first visit, shared with page 1)…");
+  setLoadButton(qwenButton, "busy");
   if (!qwenWorker) {
     qwenWorker = new Worker("worker.js", { type: "module" });
     qwenWorker.addEventListener("message", onQwenMessage);
-    qwenWorker.addEventListener("error", (event) => setQwen("error", `The Qwen3 worker failed: ${event.message || "could not start"}`, "error"));
+    qwenWorker.addEventListener("error", (event) => {
+      setModelState("qwen", "error");
+      setModelStatus("qwen", `The Qwen3 worker failed: ${event.message || "could not start"}`, "error");
+    });
   }
   await qwenWorkerReady;
   qwenWorker.postMessage({ type: "load" });
@@ -575,47 +686,48 @@ worker.addEventListener("message", ({ data }) => {
       break;
     case "probe": {
       if (app.phase !== "idle") break;
-      if (data.cached.length === data.total) startLoad();
-      else setSupport(data.cached.length ? "Part of the weights is cached. Load Vega to fetch the rest." : "Vega is not loaded yet. The first load downloads 840 MB once; later visits read it from the cache.");
+      const all = data.cached.length === data.total;
+      if (all && app.picked.has("vega")) startLoad();
+      else setModelStatus("vega", all ? "Cached. Load it to decide." : data.cached.length ? "Part of the weights is cached. Load Vega to fetch the rest." : "Not loaded yet. The first load downloads 840 MB once; later visits read it from the cache.");
+      if (!app.running) setSupport("Tick the models you want to compare and load them.");
       break;
     }
     case "phase":
       if (data.phase === "check") setPhase("checking");
-      setSupport(data.message);
+      setModelStatus("vega", data.message);
       break;
     case "progress":
-      renderProgress(data);
+      renderProgress("vega", data);
       break;
     case "loaded":
-      $("#load-value").textContent = seconds(data.loadMs);
-      $("#load-detail").textContent = `wasm · ${plural(data.threads, "thread")}${data.isolated ? "" : " (no cross-origin isolation)"}`;
-      $("#download-meter").style.width = "100%";
+      setPhaseValue("vega", "load", seconds(data.loadMs), `wasm · ${plural(data.threads, "thread")}${data.isolated ? "" : " (no cross-origin isolation)"}`);
+      setMeter("vega", 100);
       break;
     case "selfcheck":
-      renderSelfCheck(data);
+      renderSelfCheck("vega", data);
       break;
     case "ready":
       app.ready = true;
       setPhase("ready");
-      loadButton.hidden = true;
-      setSupport(`Ready. Vega is loaded locally on ${plural(data.threads, "CPU thread")} and passed the self-check.`, "ok");
+      setLoadButton(loadButton, "hidden");
+      setModelStatus("vega", `Ready on ${plural(data.threads, "CPU thread")}; passed the self-check.`, "ok");
       break;
     case "plan":
       if (data.runId !== app.runId) break;
       app.run.plan = data.questions;
-      renderCards(data.questions);
-      startVega();
+      renderCards(data.questions, app.run.models);
+      nextModel();
       break;
     case "answer":
       if (data.runId !== app.runId) break;
-      app.run.vega[data.qid] = data.answer;
+      app.run.answers.vega[data.qid] = data.answer;
       fillModel(data.qid, "vega", data.answer.probs, `${seconds(data.answer.ms)}`);
       renderVegaFlags(data.qid, data.answer);
       break;
     case "decided":
       if (data.runId !== app.runId) break;
-      app.run.vegaMs = data.ms;
-      startQwen();
+      app.run.ms.vega = data.ms;
+      nextModel();
       break;
     case "error":
       if (data.during === "plan" && data.runId === app.runId) {
@@ -625,27 +737,91 @@ worker.addEventListener("message", ({ data }) => {
         break;
       }
       if (data.during === "decide" && data.runId === app.runId) {
-        for (const qid of Object.keys(app.run.plan)) if (!app.run.vega[qid]) failModel(qid, "vega", "not decided");
+        for (const qid of Object.keys(app.run.plan)) if (!app.run.answers.vega[qid]) failModel(qid, "vega", "not decided");
         app.run.errors.push(`Vega: ${data.message}`);
-        startQwen();
+        nextModel();
         break;
       }
       setPhase(app.ready ? "ready" : "error");
       if (data.during === "load") {
-        loadButton.hidden = false;
-        loadButton.disabled = false;
-        loadButton.innerHTML = `${icon("refresh-cw")} retry load`;
-        if (root.dataset.selfcheck === "pending") $("#check-value").textContent = "–";
+        setLoadButton(loadButton, "retry");
+        if (root.dataset.selfcheck === "pending") setPhaseValue("vega", "check", "–");
       }
-      setSupport(data.message, "error");
-      renderIcons();
+      setModelStatus("vega", data.message, "error");
       break;
   }
 });
 
 worker.addEventListener("error", (event) => {
   setPhase("error");
-  setSupport(`The model worker failed: ${event.message || "could not start (check the console)"}`, "error");
+  setModelStatus("vega", `The model worker failed: ${event.message || "could not start (check the console)"}`, "error");
+});
+
+basalWorker.addEventListener("message", ({ data }) => {
+  switch (data.type) {
+    case "worker-ready":
+      resolveBasalReady();
+      break;
+    case "probe": {
+      if (app.basal !== "off") break;
+      const all = data.cached.length === data.total;
+      if (all && app.picked.has("basal")) startBasalLoad();
+      else setModelStatus("basal", all ? "Cached. Load it to decide." : "Optional. Needs WebGPU; downloads 1.5 GB once, then reads it from the cache.");
+      break;
+    }
+    case "phase":
+      if (data.phase === "check") setModelState("basal", "checking");
+      setModelStatus("basal", data.message);
+      break;
+    case "progress":
+      renderProgress("basal", data);
+      break;
+    case "loaded":
+      setPhaseValue("basal", "load", seconds(data.loadMs), "WebGPU · fp32 activations, int4/int8 weights");
+      setMeter("basal", 100);
+      break;
+    case "selfcheck":
+      renderSelfCheck("basal", data);
+      break;
+    case "ready":
+      setModelState("basal", "ready");
+      setLoadButton(basalButton, "hidden");
+      setModelStatus("basal", `Ready on WebGPU; passed the self-check. Reads up to ${data.maxOptions} options and ${data.maxTokens} tokens.`, "ok");
+      break;
+    case "answer": {
+      if (data.runId !== app.runId) break;
+      const { answer } = data;
+      app.run.answers.basal[data.qid] = answer;
+      fillModel(data.qid, "basal", answer.probs, `conf ${fixed(answer.confidence)} · ${seconds(answer.ms)}`);
+      renderBasalFlags(data.qid, answer);
+      break;
+    }
+    case "decided":
+      if (data.runId !== app.runId) break;
+      for (const [qid, message] of Object.entries(data.skipped)) failModel(qid, "basal", message);
+      app.run.ms.basal = data.ms;
+      nextModel();
+      break;
+    case "error":
+      if (data.during === "decide" && data.runId === app.runId) {
+        for (const qid of Object.keys(app.run.plan)) if (!app.run.answers.basal[qid]) failModel(qid, "basal", "not decided");
+        app.run.errors.push(`basal: ${data.message}`);
+        nextModel();
+        break;
+      }
+      setModelState("basal", app.basal === "ready" ? "ready" : "error");
+      if (data.during === "load") {
+        setLoadButton(basalButton, "retry");
+        if (root.dataset.basalSelfcheck === "pending") setPhaseValue("basal", "check", "–");
+      }
+      setModelStatus("basal", data.message, "error");
+      break;
+  }
+});
+
+basalWorker.addEventListener("error", (event) => {
+  setModelState("basal", "error");
+  setModelStatus("basal", `The basal worker failed: ${event.message || "could not start (check the console)"}`, "error");
 });
 
 function onQwenMessage({ data }) {
@@ -655,21 +831,30 @@ function onQwenMessage({ data }) {
       break;
     case "progress": {
       const { loaded, total } = data.event;
-      if (total) setQwen("loading", `Loading Qwen3 0.6B: ${Math.round((loaded / total) * 100)}% of 639 MB downloaded or read from cache…`);
+      if (!total) break;
+      setMeter("qwen", (loaded / total) * 100);
+      setPhaseValue("qwen", "download", `${Math.round((loaded / total) * 100)}%`, "downloaded or read from the cache");
       break;
     }
+    case "loaded":
+      setPhaseValue("qwen", "load", seconds(data.loadMs), "wllama · WebGPU");
+      setMeter("qwen", 100);
+      break;
     case "loading":
-      setQwen("loading", data.message.replace(/^Model/, "Qwen3 0.6B"));
+      setModelStatus("qwen", data.message.replace(/^Model/, "Qwen3 0.6B"));
       break;
     case "ready":
-      setQwen("ready", `Qwen3 0.6B is ready on WebGPU (warmup ${seconds(data.warmupMs)}). Decide runs both models.`, "ok");
-      qwenButton.hidden = true;
+      setModelState("qwen", "ready");
+      setPhaseValue("qwen", "download", "done");
+      setPhaseValue("qwen", "check", `passed · ${seconds(data.warmupMs)}`, "warmup: the capital of France must come back as Paris");
+      setModelStatus("qwen", "Ready on WebGPU; the warmup answered Paris.", "ok");
+      setLoadButton(qwenButton, "hidden");
       break;
     case "direct-result": {
       if (data.runId !== app.runId) break;
       const probs = data.options.map((option) => option.probability);
-      app.run.qwen[data.qid] = { probs, ms: data.totalMs, tokens: data.inputTokens };
-      app.run.qwenMs += data.totalMs;
+      app.run.answers.qwen[data.qid] = { probs, ms: data.totalMs, tokens: data.inputTokens };
+      app.run.ms.qwen += data.totalMs;
       fillModel(data.qid, "qwen", probs, `${seconds(data.totalMs)}`);
       nextQwen();
       break;
@@ -680,13 +865,9 @@ function onQwenMessage({ data }) {
         nextQwen();
         break;
       }
-      if (data.during === "load") {
-        qwenButton.hidden = false;
-        qwenButton.disabled = false;
-        qwenButton.innerHTML = `${icon("refresh-cw")} retry Qwen3`;
-        renderIcons();
-      }
-      setQwen(app.qwen === "ready" ? "ready" : "error", `Qwen3 0.6B: ${data.message}`, "error");
+      if (data.during === "load") setLoadButton(qwenButton, "retry");
+      setModelState("qwen", app.qwen === "ready" ? "ready" : "error");
+      setModelStatus("qwen", `Qwen3 0.6B: ${data.message}`, "error");
       break;
   }
 }
@@ -703,7 +884,9 @@ function addQuestion(type) {
 }
 
 loadButton.addEventListener("click", startLoad);
+basalButton.addEventListener("click", startBasalLoad);
 qwenButton.addEventListener("click", startQwenLoad);
+pickBoxes.forEach((box) => box.addEventListener("change", () => pick(box.dataset.pick, box.checked)));
 samplesButton.addEventListener("click", loadSamples);
 $("#open-samples").addEventListener("click", () => sampleFile.click());
 sampleFile.addEventListener("change", () => {
@@ -718,9 +901,10 @@ $("#format").addEventListener("click", () => {
   try { questionsInput.value = JSON.stringify(readQuestions(), null, 2); showInputError(""); } catch (error) { showInputError(error.message); }
 });
 $("#clear-cache").addEventListener("click", async () => {
-  await workerReady;
+  await Promise.all([workerReady, basalWorkerReady]);
   worker.postMessage({ type: "clear-cache" });
-  setSupport(app.ready ? "Cached Vega weights deleted. The loaded model keeps working until you leave the page." : "Cached Vega weights deleted.");
+  basalWorker.postMessage({ type: "clear-cache", base: BASAL_BASE });
+  setSupport("Cached Vega and basal weights deleted. Loaded models keep working until you leave the page.");
 });
 document.addEventListener("keydown", (event) => {
   if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
@@ -730,8 +914,10 @@ document.addEventListener("keydown", (event) => {
 });
 
 // ─── Init ───
+app.picked = readPicks();
 fillPreset(DEFAULT_PRESET);
 renderIcons();
 syncControls();
 workerReady.then(() => worker.postMessage({ type: "probe" }));
-if (readPref()) startQwenLoad();
+basalWorkerReady.then(() => basalWorker.postMessage({ type: "probe", base: BASAL_BASE }));
+if (app.picked.has("qwen")) startQwenLoad();

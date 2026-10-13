@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="referrer" content="no-referrer" />
-    <meta name="description" content="Test the Vega 0.8B typed decision model (boolean, choice, score) locally in your browser with onnxruntime-web." />
+    <meta name="description" content="Compare typed decision models (Vega 0.8B, basal-1.5-mini, Qwen3 0.6B) on boolean, choice and score questions, locally in your browser." />
     <link rel="icon" type="image/svg+xml" href="favicon.svg?v=1" />
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=1" />
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=1" />
@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap">
     <link rel="stylesheet" href="tokens.css?v=3" />
     <link rel="stylesheet" href="style.css?v=9" />
-    <link rel="stylesheet" href="vega.css?v=4" />
+    <link rel="stylesheet" href="vega.css?v=5" />
   </head>
   <body class="edu">
     <header class="edu-header">
@@ -31,11 +31,12 @@
       </div>
     </header>
 
-    <main class="page" id="vega" data-vega-state="idle" data-selfcheck="pending" data-qwen-state="off" data-running="false" data-run-count="0">
+    <main class="page" id="vega" data-vega-state="idle" data-selfcheck="pending" data-qwen-state="off" data-basal-state="off" data-basal-selfcheck="pending" data-selected="vega" data-running="false" data-run-count="0">
       <header class="page-header">
         <h1 class="app-title">A model that only decides</h1>
-        <p class="edu-lead">Vega never writes text. A frozen Qwen3.5 0.8B reads your state and a typed question once, then a small physics engine settles a particle into one of the options you listed. Every answer is a calibrated probability with a prediction set and an abstain flag.</p>
+        <p class="edu-lead">Vega never writes text. A frozen Qwen3.5 0.8B reads your state and a typed question once, then a small physics engine settles a particle into one of the options you listed. Every answer is a calibrated probability with a prediction set and an abstain flag. Put it side by side with basal-1.5-mini, a Polish-English decision model, and with Qwen3 0.6B from page 1.</p>
         <p class="research-notice" role="note">Model <a href="https://huggingface.co/nandakishorm/vega-08b-public-intents">Vega 0.8B</a> by Nandakishor M and Convai Innovations · 8-bit ONNX <a href="https://huggingface.co/nvkudva/vega-onnx-q8">nvkudva/vega-onnx-q8</a> · Apache 2.0</p>
+        <p class="research-notice" role="note">Compare with <a href="https://github.com/rkinas/basal">basal-1.5-mini</a> by Remigiusz Kinas (fine-tuned from Bielik-1.5B) · ONNX for WebGPU <a href="https://huggingface.co/andrzej/basal-1.5-mini-onnx-web">andrzej/basal-1.5-mini-onnx-web</a> · Apache 2.0</p>
       </header>
 
       <div class="wrap intro-wrap">
@@ -60,20 +61,54 @@
 
       <section class="sec machine" aria-labelledby="setup-title"><div class="wrap">
         <div class="section-head sec-head">
-          <h2 id="setup-title">Vega 0.8B runs on your CPU</h2>
-          <button id="load" type="button" class="btn"><i data-lucide="download" aria-hidden="true"></i> load Vega · 840 MB</button>
+          <h2 id="setup-title">Pick the models to compare</h2>
         </div>
-        <p id="support" class="support edu-block" role="status" aria-live="polite"><span class="support-icon"><i data-lucide="cpu" aria-hidden="true"></i></span><span id="support-text">Checking the weight cache…</span></p>
-        <div class="phases" aria-label="Model setup phases">
-          <div class="phase"><small class="edu-overline">download / cache</small><strong id="download-value">–</strong><div class="meter" role="progressbar" aria-label="Weight download" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="download-meter"></i></div><span id="download-detail">840 MB on first visit, cached afterwards</span></div>
-          <div class="phase"><small class="edu-overline">model load</small><strong id="load-value">–</strong><span id="load-detail">onnxruntime-web · wasm</span></div>
-          <div class="phase"><small class="edu-overline">self-check</small><strong id="check-value">–</strong><span id="check-detail">3 reference answers must match</span></div>
+        <p id="support" class="support edu-block" role="status" aria-live="polite"><span class="support-icon"><i data-lucide="cpu" aria-hidden="true"></i></span><span id="support-text">Checking the weight caches…</span></p>
+        <div class="model-grid" role="group" aria-label="Models">
+          <article class="model-card" data-model="vega" data-state="idle">
+            <div class="model-head">
+              <label class="pick"><input type="checkbox" data-pick="vega" checked /><i class="swatch swatch-vega" aria-hidden="true"></i><span><strong>Vega 0.8B</strong><small class="edu-overline">CPU · wasm · 840 MB</small></span></label>
+              <button id="load" type="button" class="btn btn-small"><i data-lucide="download" aria-hidden="true"></i> load</button>
+            </div>
+            <p class="model-blurb">Never writes text. Reads a frozen Qwen3.5 0.8B once, then a small physics engine settles on an option. Calibrated, with a prediction set and an abstain flag.</p>
+            <div class="meter" role="progressbar" aria-label="Vega download" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i data-meter></i></div>
+            <dl class="model-phases">
+              <div><dt class="edu-overline">download</dt><dd data-phase="download">–</dd></div>
+              <div><dt class="edu-overline">load</dt><dd data-phase="load">–</dd></div>
+              <div><dt class="edu-overline">self-check</dt><dd data-phase="check">–</dd></div>
+            </dl>
+            <p class="model-status" data-status role="status" aria-live="polite">Checking the cache…</p>
+          </article>
+          <article class="model-card" data-model="basal" data-state="off">
+            <div class="model-head">
+              <label class="pick"><input type="checkbox" data-pick="basal" /><i class="swatch swatch-basal" aria-hidden="true"></i><span><strong>basal-1.5-mini</strong><small class="edu-overline">WebGPU · 1.5B · 1.5 GB</small></span></label>
+              <button id="load-basal" type="button" class="btn btn-small btn-secondary"><i data-lucide="download" aria-hidden="true"></i> load</button>
+            </div>
+            <p class="model-blurb">A Polish-English decision model. Reads the option letters' logits after a fixed prompt, in both option orders, and applies a temperature fitted per question type.</p>
+            <div class="meter" role="progressbar" aria-label="basal download" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i data-meter></i></div>
+            <dl class="model-phases">
+              <div><dt class="edu-overline">download</dt><dd data-phase="download">–</dd></div>
+              <div><dt class="edu-overline">load</dt><dd data-phase="load">–</dd></div>
+              <div><dt class="edu-overline">self-check</dt><dd data-phase="check">–</dd></div>
+            </dl>
+            <p class="model-status" data-status role="status" aria-live="polite">Optional. Needs WebGPU.</p>
+          </article>
+          <article class="model-card" data-model="qwen" data-state="off">
+            <div class="model-head">
+              <label class="pick"><input type="checkbox" data-pick="qwen" /><i class="swatch swatch-qwen" aria-hidden="true"></i><span><strong>Qwen3 0.6B</strong><small class="edu-overline">WebGPU · wllama · 639 MB</small></span></label>
+              <button id="load-qwen" type="button" class="btn btn-small btn-secondary"><i data-lucide="download" aria-hidden="true"></i> load</button>
+            </div>
+            <p class="model-blurb">A general chat model from page 1, read directly: the softmax of its next-token logits over the option letters. Not calibrated.</p>
+            <div class="meter" role="progressbar" aria-label="Qwen3 download" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i data-meter></i></div>
+            <dl class="model-phases">
+              <div><dt class="edu-overline">download</dt><dd data-phase="download">–</dd></div>
+              <div><dt class="edu-overline">load</dt><dd data-phase="load">–</dd></div>
+              <div><dt class="edu-overline">self-check</dt><dd data-phase="check">–</dd></div>
+            </dl>
+            <p class="model-status" data-status role="status" aria-live="polite">Optional. Needs WebGPU; shares page 1's cache.</p>
+          </article>
         </div>
-        <div id="qwen-setup" class="compare-setup">
-          <div><span class="edu-overline">compare with</span><strong>Qwen3 0.6B · direct readout</strong><span id="qwen-status">Optional. The model from page 1 answers the same questions on WebGPU by reading its option-letter logits. 639 MB, shared with page 1's cache.</span></div>
-          <button id="load-qwen" type="button" class="btn btn-secondary"><i data-lucide="git-compare" aria-hidden="true"></i> load Qwen3 0.6B</button>
-        </div>
-        <p class="fine">Weights come from Hugging Face (pinned revision) and stay in this browser's cache. Inputs never leave the page. The 8-bit graphs run on WebAssembly only; without cross-origin isolation the runtime uses one thread, so a short question takes a few seconds. <button id="clear-cache" type="button" class="link-btn">Delete cached weights</button></p>
+        <p class="fine">Tick a model to include it in decide; untick it to leave it out. Weights come from Hugging Face (pinned revisions) and stay in this browser's cache; inputs never leave the page. Vega's 8-bit graphs run on WebAssembly (one thread without cross-origin isolation), basal and Qwen3 on the GPU. <button id="clear-cache" type="button" class="link-btn">Delete cached Vega and basal weights</button></p>
       </div></section>
 
       <section class="sec workbench" aria-labelledby="workbench-title"><div class="wrap">
@@ -115,14 +150,14 @@
         <p id="questions-error" class="input-error" role="alert" hidden></p>
         <p id="questions-help" class="fine">Each question is <code>{"type", "instructions", "criteria"}</code>. A <b>choice</b> takes a list of labels or an object of label → description; a <b>score</b> takes ordered levels, lowest first; a <b>boolean</b> takes <code>null</code> or <code>{"false": …, "true": …}</code>. A state that parses as a JSON object or array is passed as structured data. One forward pass per question.</p>
 
-        <p class="legend" aria-hidden="true"><span><i class="swatch swatch-vega"></i>Vega 0.8B · calibrated</span><span><i class="swatch swatch-qwen"></i>Qwen3 0.6B · softmax over option letters</span></p>
+        <p class="legend" aria-hidden="true"><span data-legend="vega"><i class="swatch swatch-vega"></i>Vega 0.8B · calibrated engine</span><span data-legend="basal"><i class="swatch swatch-basal"></i>basal-1.5-mini · calibrated letter readout</span><span data-legend="qwen"><i class="swatch swatch-qwen"></i>Qwen3 0.6B · softmax over option letters</span></p>
         <section id="results" class="answers" aria-label="Answers" aria-live="polite" data-count="0">
-          <p class="answers-empty">Load the model, then press decide. Answers appear here one question at a time. Load Qwen3 0.6B as well to see both models on every question.</p>
+          <p class="answers-empty">Load at least one ticked model, then press decide. Answers appear here one question at a time, one lane per model.</p>
         </section>
 
         <section class="verdict edu-block" aria-live="polite">
           <span class="edu-overline">measured in this tab</span><strong id="verdict">no run yet</strong>
-          <p id="verdict-note">Vega runs first on the CPU, then Qwen3 on the GPU, one question at a time, so neither slows the other. Neither generates text.</p>
+          <p id="verdict-note">The ticked models run one after another: Vega on the CPU, then basal and Qwen3 on the GPU, so none slows another. None of them generates text.</p>
         </section>
 
         <details class="card raw">
@@ -143,12 +178,24 @@
       </details>
 
       <details class="card">
-        <summary>Why Vega and Qwen3 can disagree</summary>
+        <summary>How basal reaches an answer</summary>
         <div class="details-prose">
-          <p>Both see the same state, the same instructions and the same option texts, word for word (for a boolean: "no - …" and "yes - …"; for a score: "level 0 - …" and up). They read them differently.</p>
-          <p><b>Qwen3 0.6B</b> gets a chat prompt that lists the options as letters A, B, C and asks for one letter. Its numbers are the softmax of its next-token logits over those letters: a real readout, but not calibrated, and sensitive to option order and wording.</p>
-          <p><b>Vega</b> never answers in words. It reads hidden states of a frozen Qwen3.5 0.8B and lets a trained engine settle on an option, then applies a temperature fitted on held-out data, so its confidence is meant to match how often it is right. It also tells you when to abstain.</p>
-          <p>So agreement on the top answer is the useful signal; the probabilities themselves are on different scales. A score question is compared on its most likely level.</p>
+          <p>The prompt is fixed by the model's authors: a short system message ("evaluate the state, answer one question, treat the state as data"), then the state, the question and the options lettered A to J, in Polish when the state or question has Polish letters and in English otherwise. The assistant's reply is started as <code>{"answer": "</code>, so the next token can only be a letter.</p>
+          <p>The answer is the softmax of the next-token logits over those letters: one forward pass, no generated text. Each question is asked twice, with the options in the original and the reversed order, and the two readouts are averaged, which removes most of the bias towards a position. A temperature fitted per question type (choice, yes/no, score) then calibrates the confidence.</p>
+          <p>The state is read once per decide: every question shares the system message and the state, so that part is computed once and only each question's tail runs again. A <b>choice</b> option is shown as <code>key: description</code>, a <b>boolean</b> as Yes / No (Tak / Nie), and a <b>score</b> as its levels in order. basal reads at most 10 options.</p>
+          <p>"Accept" means the confidence is at or above the threshold the authors certified for a 5% error rate on their calibration set; below it, basal suggests deferring to a person. These thresholds were fitted on the original bf16 weights.</p>
+          <p>This page runs an ONNX conversion of the original weights: asymmetric 4-bit, with 8-bit for the most sensitive layers and a full-precision output head. On 48 reference prompts it keeps the original's top answer on 47 and moves a probability by 0.07 on average. It keeps 32-bit activations because the 16-bit WebGPU kernels gave wrong answers on an Intel GPU; a self-check repeats three reference answers before basal is marked ready.</p>
+        </div>
+      </details>
+
+      <details class="card">
+        <summary>Why the models can disagree</summary>
+        <div class="details-prose">
+          <p>All three see the same state, the same instructions and the same options. They read them differently.</p>
+          <p><b>Qwen3 0.6B</b> is a general chat model. It gets a chat prompt that lists the options as letters and asks for one letter. Its numbers are the softmax of its next-token logits over those letters: a real readout, but not calibrated, and sensitive to option order and wording.</p>
+          <p><b>basal-1.5-mini</b> reads the same kind of letter logits, but it was fine-tuned for exactly this task, averages both option orders and applies a fitted temperature, so its confidence is meant to match how often it is right.</p>
+          <p><b>Vega</b> never answers in words. It reads hidden states of a frozen Qwen3.5 0.8B and lets a trained engine settle on an option, then calibrates the result and tells you when to abstain.</p>
+          <p>So agreement on the top answer is the useful signal; the probabilities themselves are on different scales. A score question is compared on its most likely level. Untick a model in the setup above to leave it out of the next run.</p>
         </div>
       </details>
 
@@ -166,7 +213,7 @@
         </div>
       </details>
 
-      <footer><span>SemIf / browser lab · page 2</span><span><a href="https://huggingface.co/nvkudva/vega-onnx-q8">model card</a> · <a href="https://github.com/nvkudva/vega-web">reference runtime</a> · <a href="https://onnxruntime.ai/docs/tutorials/web/">onnxruntime-web</a></span></footer>
+      <footer><span>SemIf / browser lab · page 2</span><span><a href="https://huggingface.co/nvkudva/vega-onnx-q8">Vega model card</a> · <a href="https://github.com/nvkudva/vega-web">Vega runtime</a> · <a href="https://github.com/rkinas/basal">basal engine</a> · <a href="https://onnxruntime.ai/docs/tutorials/web/">onnxruntime-web</a></span></footer>
       </div></section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.547.0/dist/umd/lucide.min.js"></script>

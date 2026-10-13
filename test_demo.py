@@ -4,7 +4,7 @@ from pathlib import Path
 WEBGPU = Path(__file__).resolve().parent
 
 def sources():
-    return {name: (WEBGPU / name).read_text() for name in ("index.html", "app.js", "worker.js", "README.md", "_headers", "vega.html", "vega.js", "vega-worker.js", "vega.css")}
+    return {name: (WEBGPU / name).read_text() for name in ("index.html", "app.js", "worker.js", "README.md", "_headers", "vega.html", "vega.js", "vega-worker.js", "vega.css", "basal-worker.js", "py-json.js")}
 
 def test_static_runtime_and_pins():
     text = sources()
@@ -80,7 +80,7 @@ def test_vega_page_pins_and_contract():
     for key in ("qid", "type", "answer", "confidence", "abstain", "unbound", "adapter"):
         assert key in text["vega.js"]
     assert 'aria-live="polite"' in text["vega.html"] and "Control+Enter" in text["vega.html"]
-    for name in ("vega.html", "vega.js", "vega-worker.js", "vega.css"):
+    for name in ("vega.html", "vega.js", "vega-worker.js", "vega.css", "basal-worker.js", "py-json.js"):
         assert "\u2014" not in text[name]
 
 def test_vega_qwen_comparison_and_samples():
@@ -117,3 +117,25 @@ def test_favicon_linked_on_both_pages():
     assert 'viewBox="0 0 64 64"' in svg and ">if</text>" in svg and "--" not in svg.split("<style>")[0]
     for name in ("favicon-16.png", "favicon-32.png", "apple-touch-icon.png", "icon-512.png"):
         assert (WEBGPU / name).stat().st_size > 200
+
+def test_basal_third_model_and_picker():
+    text = sources()
+    worker = text["basal-worker.js"]
+    assert 'new Worker("basal-worker.js", { type: "module" })' in text["vega.js"]
+    assert 'import { pyJsonDumps } from "./py-json.js";' in worker and 'import { pyJsonDumps } from "./py-json.js";' in text["vega-worker.js"]
+    assert "export function pyJsonDumps" in text["py-json.js"]
+    assert 'ORT_VERSION = "1.30.0"' in worker and "ort.webgpu.min.mjs" in worker and 'executionProviders: ["webgpu"]' in worker
+    # fp32 activations: the fp16 WebGPU graph miscomputed on Intel Xe-LPG
+    assert 'new ort.Tensor("float32", new Float32Array(0), [1, KV_HEADS, 0, HEAD_DIM])' in worker
+    assert """const PREFILL = '{"answer": "';""" in worker and 'const LETTERS = "ABCDEFGHIJ";' in worker
+    revision = re.search(r'const MODEL_REVISION = "([0-9a-f]{40})";', worker)
+    assert revision and revision.group(1) in text["README.md"]
+    assert 'MODEL_REPO = "andrzej/basal-1.5-mini-onnx-web"' in worker
+    assert "selfCheck" in worker and "tolerance: 0.05" in worker and 'send("worker-ready")' in worker
+    assert "const BROWSER_MAX_TOKENS = 4096" in worker and "PREFILL_CHUNK" in worker
+    for model in ("vega", "basal", "qwen"):
+        assert f'data-pick="{model}"' in text["vega.html"] and f'data-model="{model}"' in text["vega.html"]
+    assert 'id="load-basal"' in text["vega.html"] and 'data-basal-state="off"' in text["vega.html"] and 'data-basal-selfcheck="pending"' in text["vega.html"]
+    assert 'const MODEL_ORDER = ["vega", "basal", "qwen"];' in text["vega.js"] and "function nextModel()" in text["vega.js"]
+    assert 'const PICK_KEY = "vegaLab.models";' in text["vega.js"] and "runnableModels()" in text["vega.js"]
+    assert ".swatch-basal, .bar-basal i" in text["vega.css"]
