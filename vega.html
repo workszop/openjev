@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="description" content="Test the Vega 0.8B typed decision model (boolean, choice, score) locally in your browser with onnxruntime-web." />
+    <title>Vega decisions – SemIf browser lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap">
+    <link rel="stylesheet" href="tokens.css?v=3" />
+    <link rel="stylesheet" href="style.css?v=9" />
+    <link rel="stylesheet" href="vega.css?v=1" />
+  </head>
+  <body class="edu">
+    <header class="edu-header">
+      <div class="edu-header-inner">
+        <img class="edu-logo" alt="edulab" src="edulab-mark-ink.png" />
+        <span class="edu-wordmark">edulab</span>
+        <span class="header-app">SemIf browser lab</span>
+        <nav class="page-nav" aria-label="Lab pages">
+          <a href="index.html">Logits vs generation</a>
+          <a href="vega.html" aria-current="page">Vega decisions</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="page" id="vega" data-vega-state="idle" data-selfcheck="pending" data-run-count="0">
+      <header class="page-header">
+        <h1 class="app-title">A model that only decides</h1>
+        <p class="edu-lead">Vega never writes text. A frozen Qwen3.5 0.8B reads your state and a typed question once, then a small physics engine settles a particle into one of the options you listed. Every answer is a calibrated probability with a prediction set and an abstain flag.</p>
+        <p class="research-notice" role="note">Model <a href="https://huggingface.co/nandakishorm/vega-08b-public-intents">Vega 0.8B</a> by Nandakishor M and Convai Innovations · 8-bit ONNX <a href="https://huggingface.co/nvkudva/vega-onnx-q8">nvkudva/vega-onnx-q8</a> · Apache 2.0</p>
+      </header>
+
+      <div class="wrap intro-wrap">
+      <section class="intro intro-3 edu-block" aria-label="Question types">
+        <div class="intro-col">
+          <span class="edu-overline">boolean</span>
+          <h3>p(yes)</h3>
+          <p>Is this phishing? Should this escalate? The answer is one probability that the statement holds.</p>
+        </div>
+        <div class="intro-col">
+          <span class="edu-overline">choice</span>
+          <h3>one named option</h3>
+          <p>Which queue, which intent? You get the winning label and the full distribution over every option.</p>
+        </div>
+        <div class="intro-col">
+          <span class="edu-overline">score</span>
+          <h3>an expected level</h3>
+          <p>How severe, how urgent? Ordered levels, so the answer is an expectation, not only a pick.</p>
+        </div>
+      </section>
+      </div>
+
+      <section class="sec machine" aria-labelledby="setup-title"><div class="wrap">
+        <div class="section-head sec-head">
+          <h2 id="setup-title">Vega 0.8B runs on your CPU</h2>
+          <button id="load" type="button" class="btn"><i data-lucide="download" aria-hidden="true"></i> load Vega · 840 MB</button>
+        </div>
+        <p id="support" class="support edu-block" role="status" aria-live="polite"><span class="support-icon"><i data-lucide="cpu" aria-hidden="true"></i></span><span id="support-text">Checking the weight cache…</span></p>
+        <div class="phases" aria-label="Model setup phases">
+          <div class="phase"><small class="edu-overline">download / cache</small><strong id="download-value">–</strong><div class="meter" role="progressbar" aria-label="Weight download" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="download-meter"></i></div><span id="download-detail">840 MB on first visit, cached afterwards</span></div>
+          <div class="phase"><small class="edu-overline">model load</small><strong id="load-value">–</strong><span id="load-detail">onnxruntime-web · wasm</span></div>
+          <div class="phase"><small class="edu-overline">self-check</small><strong id="check-value">–</strong><span id="check-detail">3 reference answers must match</span></div>
+        </div>
+        <p class="fine">Weights come from Hugging Face (pinned revision) and stay in this browser's cache. Inputs never leave the page. The 8-bit graphs run on WebAssembly only; without cross-origin isolation the runtime uses one thread, so a short question takes a few seconds. <button id="clear-cache" type="button" class="link-btn">Delete cached weights</button></p>
+      </div></section>
+
+      <section class="sec workbench" aria-labelledby="workbench-title"><div class="wrap">
+        <div class="section-head sec-head">
+          <h2 id="workbench-title">Ask typed questions</h2>
+          <button id="run" type="button" class="btn" disabled aria-keyshortcuts="Control+Enter"><i data-lucide="play" aria-hidden="true"></i> decide <kbd>Ctrl ↵</kbd></button>
+        </div>
+
+        <div class="presets" aria-label="Prefill an example">
+          <span class="edu-overline">Try an example</span>
+          <button type="button" class="btn btn-secondary" data-preset="triage">Email triage</button>
+          <button type="button" class="btn btn-secondary" data-preset="guardrail">Guardrail</button>
+          <button type="button" class="btn btn-secondary" data-preset="routing">Support routing</button>
+          <button type="button" class="btn btn-secondary" data-preset="review">Review scoring</button>
+          <button type="button" class="btn btn-secondary" data-preset="escalation">JSON state</button>
+          <button type="button" class="btn btn-secondary" data-preset="intent">Banking intent</button>
+        </div>
+
+        <div class="inputs vega-inputs">
+          <label><span class="edu-overline">State <small id="state-kind" class="kind-chip">text</small></span><textarea id="state" rows="9" spellcheck="false"></textarea></label>
+          <label><span class="edu-overline">Questions <small class="kind-chip">JSON</small></span><textarea id="questions" class="code" rows="14" spellcheck="false" aria-describedby="questions-help questions-error"></textarea></label>
+          <div class="question-tools">
+            <span class="edu-overline">Add</span>
+            <button type="button" class="btn btn-secondary btn-small" data-add="boolean"><i data-lucide="toggle-right" aria-hidden="true"></i> boolean</button>
+            <button type="button" class="btn btn-secondary btn-small" data-add="choice"><i data-lucide="list" aria-hidden="true"></i> choice</button>
+            <button type="button" class="btn btn-secondary btn-small" data-add="score"><i data-lucide="gauge" aria-hidden="true"></i> score</button>
+            <button type="button" class="btn btn-secondary btn-small" id="format"><i data-lucide="braces" aria-hidden="true"></i> format</button>
+          </div>
+        </div>
+        <p id="questions-error" class="input-error" role="alert" hidden></p>
+        <p id="questions-help" class="fine">Each question is <code>{"type", "instructions", "criteria"}</code>. A <b>choice</b> takes a list of labels or an object of label → description; a <b>score</b> takes ordered levels, lowest first; a <b>boolean</b> takes <code>null</code> or <code>{"false": …, "true": …}</code>. A state that parses as a JSON object or array is passed as structured data. One forward pass per question.</p>
+
+        <section id="results" class="answers" aria-label="Answers" aria-live="polite" data-count="0">
+          <p class="answers-empty">Load the model, then press decide. Answers appear here one question at a time.</p>
+        </section>
+
+        <section class="verdict edu-block" aria-live="polite">
+          <span class="edu-overline">measured in this tab</span><strong id="verdict">no run yet</strong>
+          <p id="verdict-note">Each question is one embed, decoder and engine pass over the full prompt. No token is generated, so the cost does not grow with the answer.</p>
+        </section>
+
+        <details class="card raw">
+          <summary>Raw response JSON</summary>
+          <pre id="raw" class="output empty">no run yet</pre>
+        </details>
+      </div></section>
+
+      <section class="sec more"><div class="wrap">
+      <details class="card">
+        <summary>How Vega reaches an answer</summary>
+        <div class="details-prose">
+          <p>The prompt is fixed: <code>Observation:</code> then your state, <code>Measurement (type):</code> then the instructions, and one <code>* option</code> line per option. Short states also get the question up front, so the model reads with it in mind.</p>
+          <p>A frozen <b>Qwen3.5 0.8B</b> runs once over that prompt and stops at layer 19; its language-model head never runs. The page averages hidden states over the state span, the question span and each option span, and keeps the last token.</p>
+          <p>A 14M-parameter <b>engine</b> places a particle in a 64-dimensional decision space, puts one Gaussian well under each option and integrates 12 damped steps. The share of the particle in each well is the answer, softened by a temperature fitted to how settled it is (<b>thermal calibration</b>).</p>
+          <p>Two adapters, <b>public_intents</b> and <b>typed_decisions</b>, each have a gate. When a gate opens past 0.5, that adapter and its own calibration take over; the card shows which one answered.</p>
+        </div>
+      </details>
+
+      <details class="card">
+        <summary>Reading the flags</summary>
+        <div class="details-prose">
+          <ul>
+            <li><b>Confidence</b> is the top probability after calibration.</li>
+            <li><b>90% set</b> is a split-conformal prediction set: options that cannot be ruled out at the 10% error level. One label means the model is sure enough; several mean it is torn between them.</li>
+            <li><b>Abstain</b> fires when confidence falls below the threshold calibrated for a 10% risk. Treat the answer as "ask a human".</li>
+            <li><b>Unbound</b> means the particle settled far from every well: the input looks out of distribution.</li>
+            <li><b>Steps</b> and <b>energy</b> come straight from the engine; fewer steps means it settled early.</li>
+          </ul>
+          <p>This page runs the published 8-bit graphs. On 30 reference questions they keep every argmax, with a largest probability shift of 0.05. The self-check above repeats three of those answers on your machine before anything is shown. Image states, the 2- and 3-view averaging and the 4B checkpoint are not part of this page.</p>
+        </div>
+      </details>
+
+      <footer><span>SemIf / browser lab · page 2</span><span><a href="https://huggingface.co/nvkudva/vega-onnx-q8">model card</a> · <a href="https://github.com/nvkudva/vega-web">reference runtime</a> · <a href="https://onnxruntime.ai/docs/tutorials/web/">onnxruntime-web</a></span></footer>
+      </div></section>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.547.0/dist/umd/lucide.min.js"></script>
+    <script type="module" src="vega.js"></script>
+  </body>
+</html>

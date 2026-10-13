@@ -57,9 +57,22 @@ The two prompts contain identical state, question, and option text. Their final 
 
 Direct probabilities are conditional on only the displayed label tokens. They are not calibrated probabilities, and a high value does not establish that the underlying decision is correct.
 
+## Page 2: Vega decisions (`vega.html`)
+
+[`vega.html`](vega.html) tests [Vega 0.8B](https://huggingface.co/nandakishorm/vega-08b-public-intents), a decision-only model: a frozen Qwen3.5-0.8B read up to layer 19 plus a 14M-parameter physics engine that answers typed `boolean`, `choice` and `score` questions with calibrated probabilities, a 90% conformal prediction set, an abstain flag and an out-of-distribution ("unbound") flag. It never generates text.
+
+- Weights: the 8-bit ONNX conversion [`nvkudva/vega-onnx-q8`](https://huggingface.co/nvkudva/vega-onnx-q8) (`v2/`), revision `017c096d369ac698087f8c35a6ad8c867a7fe0f4`, about 840 MB for text. Downloaded on the first click of **load Vega**, kept in the Cache API (`vega-weights-017c096d`), and loaded automatically on later visits. Image states are not wired in.
+- Runtime: [`vega-worker.js`](vega-worker.js) runs onnxruntime-web `1.30.0` (wasm EP only; its WebGPU kernel cannot run 8-bit `MatMulNBits`) and `@huggingface/tokenizers` `0.2.0`, both from jsDelivr. Prompt layout, span pooling, memory chunks, thermal calibration, adapter routing and conformal sets follow the model card and the base model's `vega_api` at `views=1`.
+- Self-check: after loading, the worker answers the reference case `multi_q_mixed` (all three types, a JSON state) and refuses to mark the page ready unless the token counts match, the top option matches and every probability is within 0.06 of the reference.
+- Limits: at most 8 questions per run, 2–32 options per question, and 4,096 prompt tokens (the model accepts 73k, but every question re-reads the state on the CPU). Longer states are refused, never truncated.
+- DOM contract: `#vega[data-vega-state]` (`idle`, `loading`, `checking`, `ready`, `running`, `error`), `data-selfcheck` (`pending`, `pass`, `fail`) and `data-run-count`; each `.answer` card carries `data-qid`, `data-type`, `data-answer`, `data-confidence`, `data-abstain`, `data-unbound` and `data-adapter`.
+
+Verified in headless Chrome 152 against the 27 text cases of the reference runtime's parity set: token ids identical on all 29 questions that fit the 4,096-token limit, same argmax 29/29, same prediction sets 29/29, abstain 28/29 (the empty-state case the model card also flags), max |Δp| 0.0503. With cross-origin isolation (8 threads) a short question takes about 1.1 s; without it, as on GitHub Pages, about 5.3 s.
+
 ## Primary sources
 
 - [wllama source and documentation](https://github.com/ngxson/wllama)
 - [llama.cpp](https://github.com/ggml-org/llama.cpp)
+- [Vega ONNX model card](https://huggingface.co/nvkudva/vega-onnx-q8) and [onnxruntime-web](https://onnxruntime.ai/docs/tutorials/web/)
 
 The upstream model and runtime retain their respective licenses. This repository's original code is MIT licensed.

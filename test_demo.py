@@ -4,7 +4,7 @@ from pathlib import Path
 WEBGPU = Path(__file__).resolve().parent
 
 def sources():
-    return {name: (WEBGPU / name).read_text() for name in ("index.html", "app.js", "worker.js", "README.md", "_headers")}
+    return {name: (WEBGPU / name).read_text() for name in ("index.html", "app.js", "worker.js", "README.md", "_headers", "vega.html", "vega.js", "vega-worker.js", "vega.css")}
 
 def test_static_runtime_and_pins():
     text = sources()
@@ -61,3 +61,24 @@ def test_identity_notice_and_ui_mode_switch():
     assert 'class="edu-logo"' in text["index.html"] and "SemIf browser lab" in text["index.html"]
     assert 'href="https://github.com/TheoLeeCJ/SemIf/tree/master/webgpu-demo"' in text["index.html"]
     assert "ui-mode" not in text["index.html"] and "plain-ui" not in text["app.js"]
+
+def test_vega_page_pins_and_contract():
+    text = sources()
+    worker = text["vega-worker.js"]
+    assert 'href="vega.html"' in text["index.html"] and 'href="index.html"' in text["vega.html"]
+    assert 'src="vega.js"' in text["vega.html"] and 'href="vega.css?v=' in text["vega.html"]
+    assert 'new Worker("vega-worker.js", { type: "module" })' in text["vega.js"]
+    assert "onnxruntime-web@${ORT_VERSION}" in worker and 'ORT_VERSION = "1.30.0"' in worker
+    assert "@huggingface/tokenizers@0.2.0" in worker
+    assert "017c096d369ac698087f8c35a6ad8c867a7fe0f4" in worker and "017c096d369ac698087f8c35a6ad8c867a7fe0f4" in text["README.md"]
+    assert 'executionProviders: ["wasm"]' in worker and "vision_q8" not in worker
+    assert 'send("worker-ready")' in worker and "await workerReady" in text["vega.js"]
+    assert "selfCheck" in worker and "tolerance: 0.06" in worker
+    assert "const BROWSER_MAX_TOKENS = 4096" in worker
+    for attr in ("data-vega-state", "data-selfcheck", "data-run-count"):
+        assert attr in text["vega.html"]
+    for key in ("qid", "type", "answer", "confidence", "abstain", "unbound", "adapter"):
+        assert key in text["vega.js"]
+    assert 'aria-live="polite"' in text["vega.html"] and "Control+Enter" in text["vega.html"]
+    for name in ("vega.html", "vega.js", "vega-worker.js", "vega.css"):
+        assert "\u2014" not in text[name]
