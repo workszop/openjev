@@ -107,3 +107,13 @@ def test_samples_loader_button():
     assert "function parseSamples(text, fileName)" in text["vega.js"] and 'samplesButton.addEventListener("click", loadSamples)' in text["vega.js"]
     assert 'id="sample-file" type="file" accept=".txt,text/plain"' in text["vega.html"] and 'id="open-samples"' in text["vega.html"]
     assert "const MAX_SAMPLE_FILE_BYTES = 2_000_000" in text["vega.js"] and "file.text()" in text["vega.js"]
+
+def test_favicon_linked_on_both_pages():
+    text = sources()
+    for page in ("index.html", "vega.html"):
+        assert 'rel="icon" type="image/svg+xml" href="favicon.svg?v=' in text[page]
+        assert 'rel="apple-touch-icon" sizes="180x180"' in text[page]
+    svg = (WEBGPU / "favicon.svg").read_text()
+    assert 'viewBox="0 0 64 64"' in svg and ">if</text>" in svg and "--" not in svg.split("<style>")[0]
+    for name in ("favicon-16.png", "favicon-32.png", "apple-touch-icon.png", "icon-512.png"):
+        assert (WEBGPU / name).stat().st_size > 200
