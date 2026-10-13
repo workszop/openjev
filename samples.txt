@@ -6,6 +6,13 @@ paste the STATE block into the State box and the QUESTIONS block into the Questi
 and press decide (Ctrl+Enter). Each sample mixes boolean, choice and score questions.
 Every QUESTIONS block is valid JSON; the State box also accepts JSON (sample 6).
 
+Your own file: use "open my .txt..." on the page. Write each sample as
+  1. a header line that starts with three dashes and a space, then a title
+  2. a line with only STATE:, followed by the text to decide (or a JSON object)
+  3. a line with only QUESTIONS:, followed by one JSON object of questions
+A file with just one STATE: and one QUESTIONS: block (no header) also works.
+Samples whose QUESTIONS are not valid JSON are skipped and named on the page.
+
 --- 1. Hotel review ------------------------------------------------
 A mixed review: tests score vs choice vs boolean on the same text.
 

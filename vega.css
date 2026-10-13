@@ -31,6 +31,9 @@
 .samples-link { margin-left: var(--sp-2); font-family: var(--font-mono); font-size: var(--caption); }
 .samples-row { margin-top: calc(-1 * var(--sp-3)); }
 .sample-list { display: contents; }
+.samples-source { font-family: var(--font-mono); font-size: var(--caption); color: var(--ink-2); }
+.samples-source:empty { display: none; }
+.samples-source.has-skipped { color: var(--red-600); cursor: help; }
 .presets .btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .input-error { margin: 0; padding: 12px 16px; border-radius: var(--r-md); background: var(--red-soft); color: var(--red-ink); font-size: var(--body-sm); font-weight: 500; }
 .fine code { font-family: var(--font-mono); font-size: .95em; color: var(--ink); background: var(--paper-3); padding: .08em .35em; border-radius: var(--r-xs); }

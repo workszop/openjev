@@ -104,4 +104,6 @@ def test_samples_loader_button():
     text = sources()
     assert 'id="load-samples"' in text["vega.html"] and 'id="sample-list"' in text["vega.html"]
     assert 'const SAMPLES_URL = "samples.txt"' in text["vega.js"]
-    assert "function parseSamples(text)" in text["vega.js"] and 'samplesButton.addEventListener("click", loadSamples)' in text["vega.js"]
+    assert "function parseSamples(text, fileName)" in text["vega.js"] and 'samplesButton.addEventListener("click", loadSamples)' in text["vega.js"]
+    assert 'id="sample-file" type="file" accept=".txt,text/plain"' in text["vega.html"] and 'id="open-samples"' in text["vega.html"]
+    assert "const MAX_SAMPLE_FILE_BYTES = 2_000_000" in text["vega.js"] and "file.text()" in text["vega.js"]

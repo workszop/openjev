@@ -68,6 +68,7 @@ const DEFAULT_PRESET = "triage";
 const QWEN_MAX_OPTIONS = 20;
 const QWEN_PREF_KEY = "vegaLab.compareQwen";
 const SAMPLES_URL = "samples.txt";
+const MAX_SAMPLE_FILE_BYTES = 2_000_000;
 
 // ─── State ───
 const app = {
@@ -93,6 +94,7 @@ const questionsError = $("#questions-error");
 const results = $("#results");
 const samplesButton = $("#load-samples");
 const sampleList = $("#sample-list");
+const sampleFile = $("#sample-file");
 const worker = new Worker("vega-worker.js", { type: "module" });
 let qwenWorker = null;
 let resolveWorkerReady;
@@ -381,23 +383,34 @@ function fillPreset(name) {
   fillInputs(PRESETS[name].state, PRESETS[name].questions, document.querySelector(`[data-preset="${name}"]`));
 }
 
-// samples.txt: "--- n. Title ---" headers, then a STATE: block and a QUESTIONS: JSON block per sample.
-function parseSamples(text) {
-  return text.split(/^--- /m).slice(1).flatMap((block) => {
-    const title = block.split("\n")[0].replace(/-+\s*$/, "").replace(/^\d+\.\s*/, "").trim();
-    const stateStart = block.indexOf("\nSTATE:\n");
-    const questionsStart = block.indexOf("\nQUESTIONS:\n");
-    if (stateStart < 0 || questionsStart < stateStart) return [];
-    try {
-      const questions = JSON.parse(block.slice(questionsStart + "\nQUESTIONS:\n".length).trim());
-      return [{ title, state: block.slice(stateStart + "\nSTATE:\n".length, questionsStart).trim(), questions }];
-    } catch {
-      return [];
+// Sample files: "--- n. Title ---" headers, then a STATE: block and a QUESTIONS: JSON block per sample.
+// A file without headers but with both blocks counts as one sample named after the file.
+function parseSamples(text, fileName) {
+  const normalized = text.replace(/\r\n?/g, "\n");
+  const headed = /^---\s+/m.test(normalized);
+  const blocks = headed ? normalized.split(/^---\s+/m).slice(1) : [`${fileName}\n${normalized}`];
+  const samples = [];
+  const skipped = []; // { title, reason, detail }
+  for (const block of blocks) {
+    const title = block.split("\n")[0].replace(/-+\s*$/, "").replace(/^\d+\.\s*/, "").trim() || `sample ${samples.length + skipped.length + 1}`;
+    const stateMatch = /^STATE:[ \t]*$/m.exec(block);
+    const questionsMatch = /^QUESTIONS:[ \t]*$/m.exec(block);
+    if (!stateMatch || !questionsMatch || questionsMatch.index < stateMatch.index) {
+      skipped.push({ title, reason: "needs a STATE: line, then a QUESTIONS: line", detail: "" });
+      continue;
     }
-  });
+    try {
+      const questions = JSON.parse(block.slice(questionsMatch.index + questionsMatch[0].length).trim());
+      if (!questions || typeof questions !== "object" || Array.isArray(questions)) throw new Error("not an object");
+      samples.push({ title, state: block.slice(stateMatch.index + stateMatch[0].length, questionsMatch.index).trim(), questions });
+    } catch (error) {
+      skipped.push({ title, reason: "QUESTIONS is not a valid JSON object", detail: error.message });
+    }
+  }
+  return { samples, skipped, headed };
 }
 
-function renderSamples(samples) {
+function renderSamples({ samples, skipped }, source) {
   sampleList.replaceChildren(...samples.map((sample, index) => {
     const button = el("button", "btn btn-secondary", sample.title);
     button.type = "button";
@@ -410,8 +423,36 @@ function renderSamples(samples) {
     return button;
   }));
   sampleList.dataset.count = String(samples.length);
-  sampleList.hidden = false;
-  samplesButton.hidden = true;
+  sampleList.dataset.source = source;
+  sampleList.hidden = !samples.length;
+  const sourceNote = $("#samples-source");
+  sourceNote.textContent = `${source}: ${plural(samples.length, "sample")}${skipped.length ? `, skipped ${skipped.map((s) => `"${s.title}" (${s.reason})`).join(", ")}` : ""}`;
+  sourceNote.title = skipped.filter((s) => s.detail).map((s) => `${s.title}: ${s.detail}`).join("\n");
+  sourceNote.classList.toggle("has-skipped", skipped.length > 0);
+  sampleList.querySelector("button")?.focus();
+}
+
+function showSamplesError(source, message) {
+  sampleList.replaceChildren();
+  sampleList.hidden = true;
+  sampleList.dataset.count = "0";
+  sampleList.dataset.source = source;
+  const sourceNote = $("#samples-source");
+  sourceNote.textContent = `${source}: ${message}`;
+  sourceNote.title = "";
+  sourceNote.classList.add("has-skipped");
+}
+
+function applySampleText(text, source) {
+  const parsed = parseSamples(text, source.replace(/\.txt$/i, ""));
+  if (!parsed.samples.length) {
+    const first = parsed.skipped[0];
+    showSamplesError(source, parsed.headed && first
+      ? `no usable samples: "${first.title}" ${first.reason}${first.detail ? ` (${first.detail})` : ""}`
+      : `no samples found. Each sample needs a STATE: line, then a QUESTIONS: line with a JSON object, as in samples.txt.`);
+    return;
+  }
+  renderSamples(parsed, source);
 }
 
 async function loadSamples() {
@@ -419,13 +460,24 @@ async function loadSamples() {
   try {
     const response = await fetch(`${SAMPLES_URL}?v=${Date.now()}`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const samples = parseSamples(await response.text());
-    if (!samples.length) throw new Error("no samples found in the file");
-    renderSamples(samples);
-    sampleList.querySelector("button").focus();
+    applySampleText(await response.text(), SAMPLES_URL);
   } catch (error) {
+    showSamplesError(SAMPLES_URL, `could not load (${error.message})`);
+  } finally {
     samplesButton.disabled = false;
-    setSupport(`Could not load samples.txt: ${error.message}`, "error");
+  }
+}
+
+async function openSampleFile(file) {
+  if (!file) return;
+  if (file.size > MAX_SAMPLE_FILE_BYTES) {
+    showSamplesError(file.name, `the file is over ${megabytes(MAX_SAMPLE_FILE_BYTES)}`);
+    return;
+  }
+  try {
+    applySampleText(await file.text(), file.name);
+  } catch (error) {
+    showSamplesError(file.name, `could not read the file (${error.message})`);
   }
 }
 
@@ -653,6 +705,11 @@ function addQuestion(type) {
 loadButton.addEventListener("click", startLoad);
 qwenButton.addEventListener("click", startQwenLoad);
 samplesButton.addEventListener("click", loadSamples);
+$("#open-samples").addEventListener("click", () => sampleFile.click());
+sampleFile.addEventListener("change", () => {
+  openSampleFile(sampleFile.files[0]);
+  sampleFile.value = ""; // picking the same file again still fires change
+});
 runButton.addEventListener("click", run);
 stateInput.addEventListener("input", syncStateKind);
 document.querySelectorAll("[data-preset]").forEach((button) => button.addEventListener("click", () => fillPreset(button.dataset.preset)));
