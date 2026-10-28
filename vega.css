@@ -1,4 +1,4 @@
-/* Vega decisions page: additions on top of style.css. Every colour and font comes from tokens.css. */
+/* Decisions page: additions on top of style.css. Every colour and font comes from tokens.css. */
 
 /* ─── Intro ─── */
 .intro-3 { grid-template-columns: repeat(3, 1fr); }
@@ -68,14 +68,14 @@ kbd { padding: 1px 6px; border-radius: var(--r-xs); background: color-mix(in srg
 .legend { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); margin: 0; font-family: var(--font-mono); font-size: var(--caption); color: var(--ink-2); }
 .legend span { display: inline-flex; align-items: center; gap: 8px; }
 .swatch { display: inline-block; width: 22px; height: 10px; border-radius: var(--r-pill); }
-.swatch-vega, .bar-vega i { background: var(--yellow); }
+.swatch-d1, .bar-d1 i { background: var(--yellow); }
 .swatch-qwen, .bar-qwen i { background: var(--blue); }
 .swatch-basal, .bar-basal i { background: var(--green); }
 .head-chips { display: inline-flex; gap: 6px; }
 .chip-red { background: var(--red-soft); color: var(--red-ink); }
 .verdicts { display: grid; grid-template-columns: repeat(var(--lanes, 2), minmax(0, 1fr)); gap: var(--sp-2); margin: 0 0 14px; }
 .v { display: grid; gap: 2px; margin: 0; padding: 10px 12px; border-radius: var(--r-md); background: var(--paper-2); border-left: 4px solid var(--line-2); min-width: 0; }
-.v-vega.filled { border-left-color: var(--yellow); }
+.v-d1.filled { border-left-color: var(--yellow); }
 .v-qwen.filled { border-left-color: var(--blue); }
 .v-basal.filled { border-left-color: var(--green); }
 .v small { color: var(--ink-2); }
@@ -95,8 +95,8 @@ kbd { padding: 1px 6px; border-radius: var(--r-xs); background: color-mix(in srg
 .bars .bar { height: 9px; }
 .bars .bar i { width: 0; transition: width .2s ease-out; }
 .nums em { font-style: normal; text-align: right; font-family: var(--font-mono); font-size: 11px; line-height: 9px; color: var(--ink-2); }
-.top-vega .num-vega, .top-basal .num-basal, .top-qwen .num-qwen { color: var(--ink); font-weight: 600; }
-.top-vega .choice-label b, .top-basal .choice-label b, .top-qwen .choice-label b { color: var(--ink); }
+.top-d1 .num-d1, .top-basal .num-basal, .top-qwen .num-qwen { color: var(--ink); font-weight: 600; }
+.top-d1 .choice-label b, .top-basal .choice-label b, .top-qwen .choice-label b { color: var(--ink); }
 .answer .flags { grid-template-columns: repeat(2, 1fr); padding: 12px 22px 18px; border-top: 1px dashed var(--line-2); margin-top: auto; }
 .answer .flags:empty { display: none; }
 .answer .flags dd { font-size: var(--body-sm); overflow-wrap: anywhere; }

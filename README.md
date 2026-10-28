@@ -5,7 +5,7 @@ Two browser-only pages for testing small decision models locally. Nothing runs o
 | Page | Live | What it shows |
 |---|---|---|
 | **Logits vs generation** ([`index.html`](index.html)) | https://workszop.github.io/openjev/ | Qwen3 0.6B on WebGPU answers one decision two ways: by reading its option-letter logits, and by writing a JSON distribution token by token. |
-| **Vega decisions** ([`vega.html`](vega.html)) | https://workszop.github.io/openjev/vega.html | Vega 0.8B, a model that only decides, answers typed `boolean` / `choice` / `score` questions with calibrated probabilities. Tick basal-1.5-mini and/or Qwen3 0.6B to compare them on the same questions. |
+| **d1 decisions** ([`vega.html`](vega.html)) | https://workszop.github.io/openjev/vega.html | d1-2B from Liquid AI, a model that only decides, answers typed `boolean` / `choice` / `score` questions with calibrated probabilities, every question about one state in one forward pass. Tick basal-1.5-mini and/or Qwen3 0.6B to compare them on the same questions. |
 
 A header nav switches between the pages. Both use the edulab look ([`tokens.css`](tokens.css), [`style.css`](style.css)) and the yellow "if" favicon.
 
@@ -43,21 +43,21 @@ Chrome 152 on an RTX 3090 completed both paths on the email-triage preset. With 
 
 Qwen3-0.6B is the only model and loads automatically. MiniCPM5-2B was removed from this fork: on wllama 3.6.1 its WebGPU path produced gibberish (garbage logits, "Cmattnaaformumber…" for a trivial prompt) while the CPU path (`n_gpu_layers: 0`) was correct. Qwen3.5-4B showed the same failure on the test machine (Pop!_OS, Chrome, wllama 3.6.1): "**Subsub** **Sub**…" on the GPU, "Paris" on the CPU. It was removed as well. The warmup step asks the model for the capital of France and refuses to mark it ready unless the answer contains "Paris". A model that fails this check is miscomputed on that GPU backend and its logits cannot be trusted.
 
-## Page 2: Vega decisions (`vega.html`)
+## Page 2: d1 decisions (`vega.html`)
 
-[Vega 0.8B](https://huggingface.co/nandakishorm/vega-08b-public-intents) (Nandakishor M and Convai Innovations, Apache 2.0) never generates text. A frozen Qwen3.5-0.8B reads the state and a typed question once and stops at layer 19; a 14M-parameter physics engine settles a particle into one well per option. Every answer comes with calibrated probabilities, a 90% conformal prediction set, an abstain flag and an out-of-distribution ("unbound") flag.
+[d1-2B](https://huggingface.co/LiquidAI/d1-2B) (Liquid AI, built on LFM3-VL-2B, [LFM Open License v1.0](https://huggingface.co/LiquidAI/d1-2B/blob/main/LICENSE)) never generates text. It reads the state and up to 16 typed questions in one forward pass and takes each answer from the logits at that question's answer slot, softmaxed over the option codes and divided by the temperature the release ships. Every answer is a calibrated distribution over the options you listed, so it can never fall outside them. (The page kept its `vega.html` address; it ran Vega 0.8B before d1-2B replaced it.)
 
 | Type | Criteria | Answer |
 |---|---|---|
 | `boolean` | `null` or `{"false": "…", "true": "…"}` | p(yes) |
 | `choice` | a list of labels, or `{label: description}` | one label and the full distribution |
-| `score` | ordered levels, lowest first | the most likely level and the expected level |
+| `score` | 2 to 10 ordered levels, lowest first | the median level (d1's own answer), the most likely level and the expected level |
 
 ### Using the page
 
-1. **Pick the models.** Three cards, each with a tick box and a **load** button: **Vega 0.8B** (CPU, 840 MB), **basal-1.5-mini** (WebGPU, 1.5 GB) and **Qwen3 0.6B** (WebGPU, 639 MB, the same cached file as page 1). Nothing loads by itself: **load selected** loads every ticked model, and each card's **load** loads just that one (and ticks it). Only ticked, loaded models decide. Weights download once and stay in the browser cache, so later loads skip the download; the cards say which models are cached. Each model has to pass a self-check before it is marked ready. The page remembers the ticks.
+1. **Pick the models.** Three cards, each with a tick box and a **load** button: **d1-2B** (WebGPU, 1.7 GB), **basal-1.5-mini** (WebGPU, 1.5 GB) and **Qwen3 0.6B** (WebGPU, 639 MB, the same cached file as page 1). Nothing loads by itself: **load selected** loads every ticked model, and each card's **load** loads just that one (and ticks it). Only ticked, loaded models decide. Weights download once and stay in the browser cache, so later loads skip the download; the cards say which models are cached. Each model has to pass a self-check before it is marked ready. The page remembers the ticks.
 2. Fill the **State** box (plain text, or a JSON object/array that is passed as structured data) and the **Questions** box (JSON). Six built-in examples, the **+ boolean / choice / score** templates and **format** help with the JSON.
-3. Press **decide** (or Ctrl+Enter). Each card has one lane per model that ran, one bar per model and option (yellow Vega, green basal, blue Qwen3), a chip ("agree", "2 of 3 agree", "disagree"), Vega's flags and basal's 5%-risk verdict. The dark band counts how often all models agree on the top answer; **Raw response JSON** has all numbers.
+3. Press **decide** (or Ctrl+Enter). Each card has one lane per model that ran, one bar per model and option (yellow d1, green basal, blue Qwen3), a chip ("agree", "2 of 3 agree", "disagree"), d1's median level for scores and basal's 5%-risk verdict. The dark band counts how often all models agree on the top answer; **Raw response JSON** has all numbers.
 
 Questions look like this:
 
@@ -70,7 +70,7 @@ Questions look like this:
 }
 ```
 
-Limits: at most 8 questions per run, 2-32 options per question (basal skips questions with more than 10 and Qwen3 with more than 20, since they answer with letters A-J and A-T), and 4,096 prompt tokens. The model accepts 73k, but every question re-reads the state on the CPU, so longer states are refused, never truncated. Image states, the 2- and 3-view averaging and the 4B checkpoint are not part of the page.
+Limits: at most 16 questions per run (d1's trained set size, so one pass), 2-32 options per choice and 2-10 levels per score (basal skips questions with more than 10 options and Qwen3 with more than 20, since they answer with letters A-J and A-T), and 4,096 tokens for the state and all questions together, the model card's WebGPU limit for `decoder_q4`. Longer inputs are refused, never truncated. Pictures, video, multiple choice (`multiple: true`) and d1's typed reads (text, number, date, box) are not part of the page.
 
 ### Samples (`samples.txt`)
 
@@ -104,21 +104,21 @@ QUESTIONS:
 
 Each sample is a header line starting with `--- `, a line with only `STATE:` and a line with only `QUESTIONS:` followed by one JSON object. A file with a single `STATE:` / `QUESTIONS:` pair and no header also works; its button is named after the file. Samples whose questions are not valid JSON are skipped, and the page names them and says why.
 
-In one headless run (Chrome 152, both models loaded) the top answers agreed on 6 of the 18 sample questions. Qwen3 often put 0.85-1.0 on a single option, right or wrong, while Vega abstained on 11 of 18. Both models got some clear cases wrong, for example the Polish customer's threat to go to the consumer ombudsman. Treat the samples as probes, not a benchmark.
+Treat the samples as probes, not a benchmark.
 
 ### How it runs
 
-- Weights: the 8-bit ONNX conversion [`nvkudva/vega-onnx-q8`](https://huggingface.co/nvkudva/vega-onnx-q8) (`v2/`), revision `017c096d369ac698087f8c35a6ad8c867a7fe0f4`, about 840 MB for text, kept in the Cache API as `vega-weights-017c096d` (**Delete cached weights** removes it).
-- Runtime: [`vega-worker.js`](vega-worker.js) runs onnxruntime-web `1.30.0` on wasm. The same graphs also run correctly on its WebGPU backend (measured on an Intel Xe-LPG over the 6 presets and 6 samples, 34 questions: same top answer, prediction set and abstain flag on 34/34, max |Δp| 0.05), but about 7x slower there (35.6 s vs 5.0 s per question with 8 wasm threads), so the page stays on wasm and `@huggingface/tokenizers` `0.2.0`, both from jsDelivr. The prompt layout, span pooling, memory chunks, thermal calibration, adapter routing and conformal sets follow the model card and the base model's `vega_api` at `views=1`. It also answers a weight-free `plan` message, so questions are validated even while the weights load.
-- Self-check: after loading, the worker answers the reference case `multi_q_mixed` (all three types, a JSON state) and refuses to mark the page ready unless the token counts match, the top option matches and every probability is within 0.06 of the reference.
-- Comparison: Qwen3 runs in page 1's [`worker.js`](worker.js) through its single-question `direct` message. Each decide runs Vega on every question first, then Qwen3 one question at a time (concurrent wllama completions abort). Qwen3 gets the same state, the instructions as its question, and Vega's exact option texts (`no - …` / `yes - …` for booleans, `level i - …` for scores) as options A, B, C…; its probabilities are the softmax over those letter logits, which are not calibrated.
-- basal: [`basal-1.5-mini`](https://github.com/rkinas/basal) (Remigiusz Kinas, Apache 2.0, fine-tuned from Bielik-1.5B) has no official browser build, so this page uses an ONNX conversion published as [`andrzej/basal-1.5-mini-onnx-web`](https://huggingface.co/andrzej/basal-1.5-mini-onnx-web), revision `a41eff3a57bd53ea99766f2bb6580b3751255284`, about 1.5 GB, cached as `basal-weights-<rev>`. [`basal-worker.js`](basal-worker.js) runs it on onnxruntime-web `1.30.0` with WebGPU. It renders basal's own prompt (Polish or English system message, options lettered A-J, the answer started as `{"answer": "`), reads the softmax over the option-letter logits, asks in both option orders, averages, and applies basal's per-type temperature, as in `basal/prompt.py` and `basal/server.py`. The system message and state are computed once per decide and each question reuses that KV cache; prompts are prefilled in 256-token chunks. A Vega `choice` option becomes `key: description`, a `boolean` becomes Yes / No (Tak / Nie), a `score` keeps its levels. "accept" means the confidence clears basal's certified 5%-risk threshold.
+- Weights: the official ONNX export [`LiquidAI/d1-2B-ONNX`](https://huggingface.co/LiquidAI/d1-2B-ONNX), revision `7f5c6801cba6164dda9daae925178f89717b960f`, graph `onnx/decoder_q4.onnx` with its 1.74 GB `decoder_q4.onnx_data` (int4 MLP gate and up projections, int8 elsewhere, **fp32 activations**), plus `tokenizer.json` and `calibration.json`, kept in the Cache API as `d1-weights-7f5c6801` (**Delete cached weights** removes it). The vision encoder is not downloaded; the decoder gets empty `image_features` and `video_features`. The fp16-activation graphs (`q4f16`, `q8f16`, `fp16`), which the model card recommends for GPUs, are not used: 16-bit WebGPU kernels miscomputed on an Intel Xe-LPG with basal.
+- Runtime: [`d1-worker.js`](d1-worker.js) runs onnxruntime-web `1.30.0` with WebGPU (`ort.webgpu.min.mjs`, as the model card requires) and `@huggingface/tokenizers` `0.2.0`, both from jsDelivr. It ports the checkpoint's own `prompt.py`, `attention.py` (`pack_set`) and `runner.py` for `noul`, `choice` and `score` questions: the ChatML prompt with a `<think></think>` lead, the state as text or `json.dumps(indent=2)`, special tokens in user text broken with a zero-width space, option codes from scheme 2 (`d1_codes`) with the fallback pool, every question packed after the state with `question_ids` (-1 on the state, k on question k) and `slot_positions` at each question's last token, one forward pass, then the max over each option's token spellings divided by `calibration.json`'s default temperature (1.337) and softmaxed. A page `boolean` is d1's `noul`; a score's own answer is the median level. The weight file is read into one buffer sized from `content-length`, so 1.7 GB is never held twice. The worker also answers a weight-free `plan` message, so questions are validated even while the weights load.
+- Self-check: after loading, the worker answers the model card's quick-start ticket (a refund yes/no, a three-team choice, a three-level urgency score) and refuses to mark d1 ready unless the token count and the first 24 token ids match, the top options match and every probability is within 0.05 of the reference.
+- Comparison: Qwen3 runs in page 1's [`worker.js`](worker.js) through its single-question `direct` message. Each decide runs d1 on every question first, then basal, then Qwen3 one question at a time (concurrent wllama completions abort). Qwen3 gets the same state, the instructions as its question, and the plan's option texts (`no - …` / `yes - …` for booleans, `level i - …` for scores) as options A, B, C…; its probabilities are the softmax over those letter logits, which are not calibrated.
+- basal: [`basal-1.5-mini`](https://github.com/rkinas/basal) (Remigiusz Kinas, Apache 2.0, fine-tuned from Bielik-1.5B) has no official browser build, so this page uses an ONNX conversion published as [`andrzej/basal-1.5-mini-onnx-web`](https://huggingface.co/andrzej/basal-1.5-mini-onnx-web), revision `a41eff3a57bd53ea99766f2bb6580b3751255284`, about 1.5 GB, cached as `basal-weights-<rev>`. [`basal-worker.js`](basal-worker.js) runs it on onnxruntime-web `1.30.0` with WebGPU. It renders basal's own prompt (Polish or English system message, options lettered A-J, the answer started as `{"answer": "`), reads the softmax over the option-letter logits, asks in both option orders, averages, and applies basal's per-type temperature, as in `basal/prompt.py` and `basal/server.py`. The system message and state are computed once per decide and each question reuses that KV cache; prompts are prefilled in 256-token chunks. A page `choice` option becomes `key: description`, a `boolean` becomes Yes / No (Tak / Nie), a `score` keeps its levels. "accept" means the confidence clears basal's certified 5%-risk threshold.
 - basal conversion: asymmetric int4 with int8 for the most sensitive layers, fp32 output head and **fp32 activations**. The fp16 WebGPU graph answered almost every prompt with the same option on an Intel Xe-LPG GPU, while onnxruntime-web on wasm and the fp32 graph on the same GPU matched the reference. On basal's 24 example items in both option orders the port keeps the fp32 original's top answer on 47 of 48 prompts (mean max |Δp| 0.069 on WebGPU). The self-check repeats three of them (choice, yes/no, score; PL and EN) within 0.05 before basal is marked ready.
-- DOM contract: `#vega[data-vega-state]` (`idle`, `loading`, `checking`, `ready`, `error`), `data-qwen-state` and `data-basal-state` (`off`, `loading`, `checking`, `ready`, `error`, `unsupported`), `data-selected` (the ticked models), `data-running`, `data-selfcheck` and `data-basal-selfcheck` (`pending`, `pass`, `fail`), `data-run-count` and `data-agree-count`; each `.model-card` carries `data-model`, `data-state` and `data-selected`; each `.answer` card carries `data-qid`, `data-type`, `data-answer`, `data-confidence`, `data-abstain`, `data-unbound`, `data-adapter`, `data-basal-answer`, `data-basal-confidence`, `data-basal-accepted`, `data-qwen-answer`, `data-qwen-confidence` and `data-agree` (all models that answered agree); `#results[data-models]` lists the lanes; `#sample-list` carries `data-count` and `data-source`.
+- DOM contract: `#vega[data-d1-state]`, `data-qwen-state` and `data-basal-state` (`off`, `loading`, `checking`, `ready`, `error`, `unsupported`), `data-selected` (the ticked models), `data-running`, `data-d1-selfcheck` and `data-basal-selfcheck` (`pending`, `pass`, `fail`), `data-run-count` and `data-agree-count`; each `.model-card` carries `data-model`, `data-state` and `data-selected`; each `.answer` card carries `data-qid`, `data-type`, `data-d1-answer`, `data-d1-confidence`, `data-d1-level` (scores), `data-basal-answer`, `data-basal-confidence`, `data-basal-accepted`, `data-qwen-answer`, `data-qwen-confidence` and `data-agree` (all models that answered agree); `#results[data-models]` lists the lanes; `#sample-list` carries `data-count` and `data-source`.
 
 ### Verification
 
-Checked in headless Chrome 152 against the 27 text cases of the reference runtime's parity set ([nvkudva/vega-web](https://github.com/nvkudva/vega-web)): token ids identical on all 29 questions that fit the 4,096-token limit, same argmax 29/29, same prediction sets 29/29, abstain 28/29 (the empty-state case the model card also flags), max |Δp| 0.0503. With cross-origin isolation (8 threads) a short question takes about 1.1 s; without it, as on GitHub Pages, about 5.3 s. The same answers come out either way.
+d1 was checked in headless Chrome on an Intel Xe-LPG (WebGPU) against onnxruntime CPU running the same `decoder_q4` graph, with prompts built by the checkpoint's own `prompt.py`, over the 6 presets and the 12 samples (52 questions, 77-392 tokens a pass): token ids identical in all 18 rows, same top answer 52/52, mean |Δp| 0.013, max 0.11 (on a near-tie, 0.41 vs 0.49 on the CPU). The CPU reference reproduces the model card's quick start (refund 1.0, billing, medium). One pass over 3 questions takes about 1 s once the shaders are warm (the first pass after loading, about 6 s); loading from the cache takes about 25 s.
 
 ## Run locally
 
@@ -130,9 +130,9 @@ python3 serve.py          # prints http://127.0.0.1:<port>/ and sends the COOP/C
 python3 -m http.server 8080
 ```
 
-Open the printed URL for page 1 and add `vega.html` for page 2. Page 1 needs a WebGPU-capable browser; Vega runs on any current browser; basal and Qwen3 on page 2 need WebGPU. To test a local basal conversion, put it in the gitignored `local-models/` folder and open `vega.html?basalBase=local-models/<folder>`. `serve.py` makes the page cross-origin isolated, so Vega uses up to 8 CPU threads and wllama loads multi-threaded.
+Open the printed URL for page 1 and add `vega.html` for page 2. Both pages need a WebGPU-capable browser. To test local weights, put them in the gitignored `local-models/` folder and open `vega.html?d1Base=local-models/<folder>` (the same layout as the Hugging Face repo, `onnx/` included) or `vega.html?basalBase=local-models/<folder>`. `serve.py` makes the page cross-origin isolated, so wllama loads multi-threaded.
 
-For deployment, any static HTTPS host works. GitHub Pages cannot send the COOP/COEP headers from [`_headers`](_headers), so there both runtimes are single-threaded: wllama loads in about 20 s from cache instead of 3 s, and Vega takes about 5 s per question instead of 1 s. Results are identical. Hosts that honour `_headers` (Cloudflare Pages, Netlify) get the faster path. `_headers` also applies `Referrer-Policy: no-referrer`, matching the page and worker policy, so cross-origin Hugging Face requests do not carry the hosting URL as a referrer.
+For deployment, any static HTTPS host works. GitHub Pages cannot send the COOP/COEP headers from [`_headers`](_headers), so there wllama is single-threaded and loads in about 20 s from cache instead of 3 s. Results are identical. Hosts that honour `_headers` (Cloudflare Pages, Netlify) get the faster path. `_headers` also applies `Referrer-Policy: no-referrer`, matching the page and worker policy, so cross-origin Hugging Face requests do not carry the hosting URL as a referrer.
 
 No build step, API, database, telemetry, or server-side inference is used.
 
@@ -141,7 +141,8 @@ No build step, API, database, telemetry, or server-side inference is used.
 | File | Role |
 |---|---|
 | `index.html`, `app.js`, `worker.js` | Page 1 and its wllama worker (also serves page 2's Qwen3 comparison) |
-| `vega.html`, `vega.js`, `vega-worker.js`, `vega.css` | Page 2 and its Vega worker (onnxruntime-web, wasm) |
+| `vega.html`, `vega.js`, `vega.css` | Page 2 |
+| `d1-worker.js` | Page 2's d1 worker (onnxruntime-web, WebGPU) |
 | `basal-worker.js` | Page 2's basal worker (onnxruntime-web, WebGPU) |
 | `py-json.js` | Python-style `json.dumps`, shared by both decision workers |
 | `samples.txt` | Twelve sample decisions (six in Polish) and the format for your own files |
@@ -156,7 +157,7 @@ No build step, API, database, telemetry, or server-side inference is used.
 - wllama `3.6.1` (vendored), Vue `3.5.21`, Lucide `0.547.0`
 - onnxruntime-web `1.30.0`, `@huggingface/tokenizers` `0.2.0`
 - Qwen3: [`Qwen3-0.6B Q8_0`](https://huggingface.co/Qwen/Qwen3-0.6B-GGUF), revision `23749fefcc72300e3a2ad315e1317431b06b590a`, 639,446,688 bytes
-- Vega: [`nvkudva/vega-onnx-q8`](https://huggingface.co/nvkudva/vega-onnx-q8), revision `017c096d369ac698087f8c35a6ad8c867a7fe0f4`
+- d1: [`LiquidAI/d1-2B-ONNX`](https://huggingface.co/LiquidAI/d1-2B-ONNX), revision `7f5c6801cba6164dda9daae925178f89717b960f`, `onnx/decoder_q4.onnx`
 - basal: [`andrzej/basal-1.5-mini-onnx-web`](https://huggingface.co/andrzej/basal-1.5-mini-onnx-web), revision `a41eff3a57bd53ea99766f2bb6580b3751255284`, converted from [`Remek/basal-1.5-mini`](https://huggingface.co/Remek/basal-1.5-mini)
 
 Every model URL includes an immutable Hugging Face revision. Model files remain external and are downloaded directly into browser-managed storage.
@@ -165,7 +166,7 @@ Every model URL includes an immutable Hugging Face revision. Model files remain 
 
 - [wllama source and documentation](https://github.com/ngxson/wllama) and [llama.cpp](https://github.com/ggml-org/llama.cpp)
 - [basal engine](https://github.com/rkinas/basal) and [basal-1.5-mini](https://huggingface.co/Remek/basal-1.5-mini)
-- [Vega base model](https://huggingface.co/nandakishorm/vega-08b-public-intents), [Vega ONNX model card](https://huggingface.co/nvkudva/vega-onnx-q8) and [onnxruntime-web](https://onnxruntime.ai/docs/tutorials/web/)
+- [d1-2B model card](https://huggingface.co/LiquidAI/d1-2B), [d1-2B ONNX model card](https://huggingface.co/LiquidAI/d1-2B-ONNX) and [onnxruntime-web](https://onnxruntime.ai/docs/tutorials/web/)
 - Upstream fork: [TheoLeeCJ/SemIf webgpu-demo](https://github.com/TheoLeeCJ/SemIf/tree/master/webgpu-demo)
 
 The upstream models and runtimes retain their respective licenses. This repository's original code is MIT licensed.

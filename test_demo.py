@@ -4,7 +4,7 @@ from pathlib import Path
 WEBGPU = Path(__file__).resolve().parent
 
 def sources():
-    return {name: (WEBGPU / name).read_text() for name in ("index.html", "app.js", "worker.js", "README.md", "_headers", "vega.html", "vega.js", "vega-worker.js", "vega.css", "basal-worker.js", "py-json.js")}
+    return {name: (WEBGPU / name).read_text() for name in ("index.html", "app.js", "worker.js", "README.md", "_headers", "vega.html", "vega.js", "d1-worker.js", "vega.css", "basal-worker.js", "py-json.js")}
 
 def test_static_runtime_and_pins():
     text = sources()
@@ -64,23 +64,29 @@ def test_identity_notice_and_ui_mode_switch():
 
 def test_vega_page_pins_and_contract():
     text = sources()
-    worker = text["vega-worker.js"]
+    worker = text["d1-worker.js"]
     assert 'href="vega.html"' in text["index.html"] and 'href="index.html"' in text["vega.html"]
     assert 'src="vega.js"' in text["vega.html"] and 'href="vega.css?v=' in text["vega.html"]
-    assert 'new Worker("vega-worker.js", { type: "module" })' in text["vega.js"]
+    assert 'new Worker("d1-worker.js", { type: "module" })' in text["vega.js"]
+    assert not (WEBGPU / "vega-worker.js").exists()
     assert "onnxruntime-web@${ORT_VERSION}" in worker and 'ORT_VERSION = "1.30.0"' in worker
-    assert "@huggingface/tokenizers@0.2.0" in worker
-    assert "017c096d369ac698087f8c35a6ad8c867a7fe0f4" in worker and "017c096d369ac698087f8c35a6ad8c867a7fe0f4" in text["README.md"]
-    assert 'executionProviders: ["wasm"]' in worker and "vision_q8" not in worker
+    assert "@huggingface/tokenizers@0.2.0" in worker and "ort.webgpu.min.mjs" in worker
+    assert 'MODEL_REPO = "LiquidAI/d1-2B-ONNX"' in worker
+    assert "7f5c6801cba6164dda9daae925178f89717b960f" in worker and "7f5c6801cba6164dda9daae925178f89717b960f" in text["README.md"]
+    # fp32 activations: the fp16 WebGPU graphs miscomputed on Intel Xe-LPG
+    assert '"onnx/decoder_q4.onnx"' in worker and "q4f16" not in worker and 'executionProviders: ["webgpu"]' in worker
+    assert 'const LEAD = "<think></think>"' in worker and 'const QUESTION_HEADER = "QUESTION:\\n"' in worker
+    assert "function packSet(prefix, suffixes)" in worker and "question_ids" in worker and "slot_positions" in worker
     assert 'send("worker-ready")' in worker and "await workerReady" in text["vega.js"]
-    assert "selfCheck" in worker and "tolerance: 0.06" in worker
-    assert "const BROWSER_MAX_TOKENS = 4096" in worker
-    for attr in ("data-vega-state", "data-selfcheck", "data-run-count"):
+    assert "selfCheck" in worker and "tolerance: 0.05" in worker and "idsLength: 123" in worker
+    assert "const BROWSER_MAX_TOKENS = 4096" in worker and "const MAX_QUESTIONS = 16" in worker
+    for attr in ("data-d1-state", "data-d1-selfcheck", "data-run-count"):
         assert attr in text["vega.html"]
-    for key in ("qid", "type", "answer", "confidence", "abstain", "unbound", "adapter"):
+    for key in ("qid", "type", "d1Answer", "d1Confidence", "d1Level"):
         assert key in text["vega.js"]
     assert 'aria-live="polite"' in text["vega.html"] and "Control+Enter" in text["vega.html"]
-    for name in ("vega.html", "vega.js", "vega-worker.js", "vega.css", "basal-worker.js", "py-json.js"):
+    assert "Vega" not in text["vega.html"] and "Vega" not in text["index.html"]
+    for name in ("vega.html", "vega.js", "d1-worker.js", "vega.css", "basal-worker.js", "py-json.js"):
         assert "\u2014" not in text[name]
 
 def test_vega_qwen_comparison_and_samples():
@@ -90,7 +96,7 @@ def test_vega_qwen_comparison_and_samples():
     assert 'data.type === "direct"' in text["worker.js"] and 'send("direct-result"' in text["worker.js"]
     assert 'id="load-qwen"' in text["vega.html"] and 'data-qwen-state="off"' in text["vega.html"]
     assert "const QWEN_MAX_OPTIONS = 20" in text["vega.js"] and "function nextQwen()" in text["vega.js"]
-    assert 'if (data.type === "plan")' in text["vega-worker.js"]
+    assert 'if (data.type === "plan")' in text["d1-worker.js"]
     assert 'href="samples.txt"' in text["vega.html"]
     samples = (WEBGPU / "samples.txt").read_text()
     blocks = samples.split("\n--- ")[1:]
@@ -122,7 +128,7 @@ def test_basal_third_model_and_picker():
     text = sources()
     worker = text["basal-worker.js"]
     assert 'new Worker("basal-worker.js", { type: "module" })' in text["vega.js"]
-    assert 'import { pyJsonDumps } from "./py-json.js";' in worker and 'import { pyJsonDumps } from "./py-json.js";' in text["vega-worker.js"]
+    assert 'import { pyJsonDumps } from "./py-json.js";' in worker and 'import { pyJsonDumps } from "./py-json.js";' in text["d1-worker.js"]
     assert "export function pyJsonDumps" in text["py-json.js"]
     assert 'ORT_VERSION = "1.30.0"' in worker and "ort.webgpu.min.mjs" in worker and 'executionProviders: ["webgpu"]' in worker
     # fp32 activations: the fp16 WebGPU graph miscomputed on Intel Xe-LPG
@@ -133,10 +139,10 @@ def test_basal_third_model_and_picker():
     assert 'MODEL_REPO = "andrzej/basal-1.5-mini-onnx-web"' in worker
     assert "selfCheck" in worker and "tolerance: 0.05" in worker and 'send("worker-ready")' in worker
     assert "const BROWSER_MAX_TOKENS = 4096" in worker and "PREFILL_CHUNK" in worker
-    for model in ("vega", "basal", "qwen"):
+    for model in ("d1", "basal", "qwen"):
         assert f'data-pick="{model}"' in text["vega.html"] and f'data-model="{model}"' in text["vega.html"]
     assert 'id="load-basal"' in text["vega.html"] and 'data-basal-state="off"' in text["vega.html"] and 'data-basal-selfcheck="pending"' in text["vega.html"]
-    assert 'const MODEL_ORDER = ["vega", "basal", "qwen"];' in text["vega.js"] and "function nextModel()" in text["vega.js"]
+    assert 'const MODEL_ORDER = ["d1", "basal", "qwen"];' in text["vega.js"] and "function nextModel()" in text["vega.js"]
     assert 'const PICK_KEY = "vegaLab.models";' in text["vega.js"] and "runnableModels()" in text["vega.js"]
     assert ".swatch-basal, .bar-basal i" in text["vega.css"]
 
@@ -144,9 +150,9 @@ def test_vega_page_never_autoloads():
     text = sources()
     js = text["vega.js"]
     init = js.split("// ─── Init ───")[1]
-    assert "startLoad" not in init and "startQwenLoad" not in init and "startBasalLoad" not in init and "loadSelected" not in init
+    assert "startD1Load" not in init and "startQwenLoad" not in init and "startBasalLoad" not in init and "loadSelected" not in init
     for probe in js.split('case "probe":')[1:]:
-        assert "startLoad()" not in probe.split("break;")[0] and "startBasalLoad()" not in probe.split("break;")[0]
+        assert "startD1Load()" not in probe.split("break;")[0] and "startBasalLoad()" not in probe.split("break;")[0]
     assert 'id="load-selected"' in text["vega.html"] and 'loadSelectedButton.addEventListener("click", loadSelected)' in js
 
 def test_polish_samples_are_fully_polish():
