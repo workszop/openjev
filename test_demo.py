@@ -66,7 +66,7 @@ def test_vega_page_pins_and_contract():
     text = sources()
     worker = text["d1-worker.js"]
     assert 'href="vega.html"' in text["index.html"] and 'href="index.html"' in text["vega.html"]
-    assert 'src="vega.js"' in text["vega.html"] and 'href="vega.css?v=' in text["vega.html"]
+    assert 'src="vega.js?v=' in text["vega.html"] and 'href="vega.css?v=' in text["vega.html"]
     assert 'new Worker("d1-worker.js", { type: "module" })' in text["vega.js"]
     assert not (WEBGPU / "vega-worker.js").exists()
     assert "onnxruntime-web@${ORT_VERSION}" in worker and 'ORT_VERSION = "1.30.0"' in worker
