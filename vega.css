@@ -42,7 +42,7 @@
 
 /* ─── Desk: inputs left, answers right, one viewport tall ─── */
 .workbench { padding: var(--sp-4) 0; scroll-margin-top: 0; }
-.desk { --desk-h: calc(100dvh - 2 * var(--sp-4)); max-width: 1600px; height: var(--desk-h); min-height: 560px; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--sp-5); }
+.desk { --desk-h: calc(100dvh - 2 * var(--sp-4)); max-width: 1240px; padding-inline: clamp(24px, 5vw, 72px); box-sizing: content-box; height: var(--desk-h); min-height: 560px; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--sp-5); }
 .desk-input, .desk-output { display: flex; flex-direction: column; gap: var(--sp-3); min-height: 0; }
 .desk-input > *, .desk-output > * { flex-shrink: 0; }
 .desk .sec-head h2 { font-size: var(--h3); }
@@ -152,6 +152,7 @@ kbd { padding: 1px 6px; border-radius: var(--r-xs); background: color-mix(in srg
   .answers { overflow: visible; }
 }
 @media (max-width: 768px) {
+  .desk { padding-inline: 16px; }
   .model-grid { grid-template-columns: 1fr; }
   .intro-3 { grid-template-columns: 1fr; }
   .desk .presets .edu-overline { min-width: 0; }
