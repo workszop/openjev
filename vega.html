@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap">
     <link rel="stylesheet" href="tokens.css?v=3" />
     <link rel="stylesheet" href="style.css?v=9" />
-    <link rel="stylesheet" href="vega.css?v=6" />
+    <link rel="stylesheet" href="vega.css?v=7" />
   </head>
   <body class="edu">
     <header class="edu-header">
@@ -59,9 +59,10 @@
       </section>
       </div>
 
-      <section class="sec machine" aria-labelledby="setup-title"><div class="wrap">
+      <section class="sec machine" id="setup" aria-labelledby="setup-title"><div class="wrap">
         <div class="section-head sec-head">
           <h2 id="setup-title">Pick the models to compare</h2>
+          <a class="to-desk" href="#desk">to the questions <i data-lucide="arrow-down" aria-hidden="true"></i></a>
           <button id="load-selected" type="button" class="btn"><i data-lucide="download" aria-hidden="true"></i> load selected</button>
         </div>
         <p id="support" class="support edu-block" role="status" aria-live="polite"><span class="support-icon"><i data-lucide="cpu" aria-hidden="true"></i></span><span id="support-text">Checking the weight caches…</span></p>
@@ -112,62 +113,79 @@
         <p class="fine">Nothing loads by itself: tick the models, then press <b>load selected</b> (or a card's own load button). Only ticked, loaded models decide. Weights come from Hugging Face (pinned revisions) and stay in this browser's cache; inputs never leave the page. All three run on the GPU through WebGPU. <button id="clear-cache" type="button" class="link-btn">Delete cached d1 and basal weights</button></p>
       </div></section>
 
-      <section class="sec workbench" aria-labelledby="workbench-title"><div class="wrap">
-        <div class="section-head sec-head">
-          <h2 id="workbench-title">Ask typed questions</h2>
-          <button id="run" type="button" class="btn" disabled aria-keyshortcuts="Control+Enter"><i data-lucide="play" aria-hidden="true"></i> decide <kbd>Ctrl ↵</kbd></button>
-        </div>
-
-        <div class="presets" aria-label="Prefill an example">
-          <span class="edu-overline">Try an example</span>
-          <button type="button" class="btn btn-secondary" data-preset="triage">Email triage</button>
-          <button type="button" class="btn btn-secondary" data-preset="guardrail">Guardrail</button>
-          <button type="button" class="btn btn-secondary" data-preset="routing">Support routing</button>
-          <button type="button" class="btn btn-secondary" data-preset="review">Review scoring</button>
-          <button type="button" class="btn btn-secondary" data-preset="escalation">JSON state</button>
-          <button type="button" class="btn btn-secondary" data-preset="intent">Banking intent</button>
-        </div>
-        <div class="presets samples-row" aria-label="Samples from a .txt file">
-          <span class="edu-overline">More samples</span>
-          <button id="load-samples" type="button" class="btn btn-secondary"><i data-lucide="file-text" aria-hidden="true"></i> load samples.txt</button>
-          <button id="open-samples" type="button" class="btn btn-secondary" aria-controls="sample-file"><i data-lucide="folder-open" aria-hidden="true"></i> open my .txt…</button>
-          <input id="sample-file" type="file" accept=".txt,text/plain" hidden />
-          <div id="sample-list" class="sample-list" data-count="0" data-source="" hidden></div>
-          <span id="samples-source" class="samples-source" role="status" aria-live="polite"></span>
-          <a class="samples-link" href="samples.txt" download>download the format (.txt)</a>
-        </div>
-
-        <div class="inputs vega-inputs">
-          <label><span class="edu-overline">State <small id="state-kind" class="kind-chip">text</small></span><textarea id="state" rows="9" spellcheck="false"></textarea></label>
-          <label><span class="edu-overline">Questions <small class="kind-chip">JSON</small></span><textarea id="questions" class="code" rows="14" spellcheck="false" aria-describedby="questions-help questions-error"></textarea></label>
-          <div class="question-tools">
-            <span class="edu-overline">Add</span>
-            <button type="button" class="btn btn-secondary btn-small" data-add="boolean"><i data-lucide="toggle-right" aria-hidden="true"></i> boolean</button>
-            <button type="button" class="btn btn-secondary btn-small" data-add="choice"><i data-lucide="list" aria-hidden="true"></i> choice</button>
-            <button type="button" class="btn btn-secondary btn-small" data-add="score"><i data-lucide="gauge" aria-hidden="true"></i> score</button>
-            <button type="button" class="btn btn-secondary btn-small" id="format"><i data-lucide="braces" aria-hidden="true"></i> format</button>
+      <section class="sec workbench" id="desk" aria-labelledby="workbench-title"><div class="wrap desk">
+        <div class="desk-input">
+          <div class="section-head sec-head">
+            <h2 id="workbench-title">Ask typed questions</h2>
           </div>
+
+          <div class="presets" aria-label="Prefill an example">
+            <span class="edu-overline">Examples</span>
+            <button type="button" class="btn btn-secondary btn-small" data-preset="triage">Email triage</button>
+            <button type="button" class="btn btn-secondary btn-small" data-preset="guardrail">Guardrail</button>
+            <button type="button" class="btn btn-secondary btn-small" data-preset="routing">Support routing</button>
+            <button type="button" class="btn btn-secondary btn-small" data-preset="review">Review scoring</button>
+            <button type="button" class="btn btn-secondary btn-small" data-preset="escalation">JSON state</button>
+            <button type="button" class="btn btn-secondary btn-small" data-preset="intent">Banking intent</button>
+          </div>
+          <div class="presets samples-row" aria-label="Samples from a .txt file">
+            <span class="edu-overline">Samples</span>
+            <button id="load-samples" type="button" class="btn btn-secondary btn-small" title="Load the samples that ship with this page"><i data-lucide="file-text" aria-hidden="true"></i> samples.txt</button>
+            <button id="open-samples" type="button" class="btn btn-secondary btn-small" aria-controls="sample-file"><i data-lucide="folder-open" aria-hidden="true"></i> my .txt…</button>
+            <input id="sample-file" type="file" accept=".txt,text/plain" hidden />
+            <span id="samples-source" class="samples-source" role="status" aria-live="polite"></span>
+            <div id="sample-list" class="sample-list" data-count="0" data-source="" hidden></div>
+          </div>
+
+          <div class="inputs vega-inputs">
+            <div class="field field-state">
+              <div class="field-head"><label for="state">State <small id="state-kind" class="kind-chip">text</small></label></div>
+              <textarea id="state" spellcheck="false"></textarea>
+            </div>
+            <div class="field field-questions">
+              <div class="field-head">
+                <label for="questions">Questions <small class="kind-chip">JSON</small></label>
+                <div class="question-tools" role="group" aria-label="Add a question">
+                  <span class="edu-overline">Add</span>
+                  <button type="button" class="btn btn-secondary btn-tiny" data-add="boolean"><i data-lucide="toggle-right" aria-hidden="true"></i> boolean</button>
+                  <button type="button" class="btn btn-secondary btn-tiny" data-add="choice"><i data-lucide="list" aria-hidden="true"></i> choice</button>
+                  <button type="button" class="btn btn-secondary btn-tiny" data-add="score"><i data-lucide="gauge" aria-hidden="true"></i> score</button>
+                  <button type="button" class="btn btn-secondary btn-tiny" id="format" title="Re-indent the questions JSON"><i data-lucide="braces" aria-hidden="true"></i> format</button>
+                </div>
+              </div>
+              <textarea id="questions" class="code" spellcheck="false" aria-describedby="questions-help questions-error"></textarea>
+            </div>
+          </div>
+          <p id="questions-error" class="input-error" role="alert" hidden></p>
+          <div class="desk-actions">
+            <button id="run" type="button" class="btn btn-run" disabled aria-keyshortcuts="Control+Enter" aria-describedby="run-hint"><i data-lucide="play" aria-hidden="true"></i> decide <kbd>Ctrl ↵</kbd></button>
+            <p id="run-hint" class="run-hint">Load a ticked model first (<a href="#setup">pick the models</a>).</p>
+          </div>
+          <details class="format-help">
+            <summary>Question format</summary>
+            <p id="questions-help" class="fine">Each question is <code>{"type", "instructions", "criteria"}</code>. A <b>choice</b> takes a list of labels or an object of label → description; a <b>score</b> takes ordered levels, lowest first; a <b>boolean</b> takes <code>null</code> or <code>{"false": …, "true": …}</code>. A state that parses as a JSON object or array is passed as structured data. d1 reads up to 16 questions about one state in one forward pass; a score takes 2 to 10 levels. A samples file holds one STATE and one QUESTIONS block per sample: <a href="samples.txt" download>download the format (.txt)</a>.</p>
+          </details>
         </div>
-        <p id="questions-error" class="input-error" role="alert" hidden></p>
-        <p id="questions-help" class="fine">Each question is <code>{"type", "instructions", "criteria"}</code>. A <b>choice</b> takes a list of labels or an object of label → description; a <b>score</b> takes ordered levels, lowest first; a <b>boolean</b> takes <code>null</code> or <code>{"false": …, "true": …}</code>. A state that parses as a JSON object or array is passed as structured data. d1 reads up to 16 questions about one state in one forward pass; a score takes 2 to 10 levels.</p>
 
-        <p class="legend" aria-hidden="true"><span data-legend="d1"><i class="swatch swatch-d1"></i>d1-2B · calibrated answer-slot readout</span><span data-legend="basal"><i class="swatch swatch-basal"></i>basal-1.5-mini · calibrated letter readout</span><span data-legend="qwen"><i class="swatch swatch-qwen"></i>Qwen3 0.6B · softmax over option letters</span></p>
-        <section id="results" class="answers" aria-label="Answers" aria-live="polite" data-count="0">
-          <p class="answers-empty">Load at least one ticked model, then press decide. Answers appear here one question at a time, one lane per model.</p>
-        </section>
+        <div class="desk-output">
+          <p class="legend" aria-hidden="true"><span data-legend="d1"><i class="swatch swatch-d1"></i>d1-2B · calibrated answer-slot readout</span><span data-legend="basal"><i class="swatch swatch-basal"></i>basal-1.5-mini · calibrated letter readout</span><span data-legend="qwen"><i class="swatch swatch-qwen"></i>Qwen3 0.6B · softmax over option letters</span></p>
+          <section id="results" class="answers" aria-label="Answers" aria-live="polite" data-count="0">
+            <p class="answers-empty">Load at least one ticked model, then press decide. Answers appear here one question at a time, one lane per model.</p>
+          </section>
 
-        <section class="verdict edu-block" aria-live="polite">
-          <span class="edu-overline">measured in this tab</span><strong id="verdict">no run yet</strong>
-          <p id="verdict-note">The ticked models run one after another on the GPU: d1, then basal, then Qwen3, so none slows another. None of them generates text.</p>
-        </section>
-
-        <details class="card raw">
-          <summary>Raw response JSON</summary>
-          <pre id="raw" class="output empty">no run yet</pre>
-        </details>
+          <section class="verdict edu-block" aria-live="polite">
+            <span class="edu-overline">measured in this tab</span><strong id="verdict">no run yet</strong>
+            <p id="verdict-note">The ticked models run one after another on the GPU: d1, then basal, then Qwen3, so none slows another. None of them generates text.</p>
+          </section>
+        </div>
       </div></section>
 
       <section class="sec more"><div class="wrap">
+      <details class="card raw">
+        <summary>Raw response JSON</summary>
+        <pre id="raw" class="output empty">no run yet</pre>
+      </details>
+
       <details class="card">
         <summary>How d1 reaches an answer</summary>
         <div class="details-prose">
@@ -216,6 +234,6 @@
       </div></section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.547.0/dist/umd/lucide.min.js"></script>
-    <script type="module" src="vega.js?v=2"></script>
+    <script type="module" src="vega.js?v=3"></script>
   </body>
 </html>

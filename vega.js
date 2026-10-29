@@ -103,6 +103,7 @@ const loadSelectedButton = $("#load-selected");
 const basalButton = $("#load-basal");
 const qwenButton = $("#load-qwen");
 const runButton = $("#run");
+const runHint = $("#run-hint");
 const stateInput = $("#state");
 const questionsInput = $("#questions");
 const questionsError = $("#questions-error");
@@ -169,8 +170,14 @@ function syncControls() {
     card.dataset.selected = String(app.picked.has(model));
   }
   for (const box of pickBoxes) box.checked = app.picked.has(box.dataset.pick);
-  document.querySelectorAll("[data-legend]").forEach((item) => { item.hidden = !app.picked.has(item.dataset.legend); });
-  runButton.disabled = app.running || !runnableModels().length;
+  document.querySelectorAll("[data-legend]").forEach((item) => {
+    item.hidden = !app.picked.has(item.dataset.legend);
+    item.dataset.state = app[item.dataset.legend];
+  });
+  const runnable = runnableModels();
+  runButton.disabled = app.running || !runnable.length;
+  const setupLink = Object.assign(el("a", "", "pick the models"), { href: "#setup" });
+  runHint.replaceChildren(...(runnable.length ? [`Decides with ${runnable.map((m) => MODEL_NAMES[m]).join(", ")}.`] : ["Load a ticked model first (", setupLink, ")."]));
   const pending = loadableModels();
   loadSelectedButton.disabled = !pending.length;
   loadSelectedButton.title = pending.length ? `Load ${pending.map((m) => MODEL_NAMES[m]).join(", ")}` : "Every ticked model is loaded or loading";

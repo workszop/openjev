@@ -56,8 +56,8 @@ Qwen3-0.6B is the only model and loads automatically. MiniCPM5-2B was removed fr
 ### Using the page
 
 1. **Pick the models.** Three cards, each with a tick box and a **load** button: **d1-2B** (WebGPU, 1.7 GB), **basal-1.5-mini** (WebGPU, 1.5 GB) and **Qwen3 0.6B** (WebGPU, 639 MB, the same cached file as page 1). Nothing loads by itself: **load selected** loads every ticked model, and each card's **load** loads just that one (and ticks it). Only ticked, loaded models decide. Weights download once and stay in the browser cache, so later loads skip the download; the cards say which models are cached. Each model has to pass a self-check before it is marked ready. The page remembers the ticks.
-2. Fill the **State** box (plain text, or a JSON object/array that is passed as structured data) and the **Questions** box (JSON). Six built-in examples, the **+ boolean / choice / score** templates and **format** help with the JSON.
-3. Press **decide** (or Ctrl+Enter). Each card has one lane per model that ran, one bar per model and option (yellow d1, green basal, blue Qwen3), a chip ("agree", "2 of 3 agree", "disagree"), d1's median level for scores and basal's 5%-risk verdict. The dark band counts how often all models agree on the top answer; **Raw response JSON** has all numbers.
+2. Go **to the questions**: the question desk below the cards takes one screen (the menu scrolls away), with the inputs on the left and the answers on the right. Fill the **State** box (plain text, or a JSON object/array that is passed as structured data) and the **Questions** box (JSON). Six built-in examples, the **+ boolean / choice / score** templates and **format** help with the JSON.
+3. Press **decide** (or Ctrl+Enter) under the boxes; the line next to it says which models will run. Answers fill the right-hand panel, which scrolls on its own. Each card has one lane per model that ran, one bar per model and option (yellow d1, green basal, blue Qwen3), a chip ("agree", "2 of 3 agree", "disagree"), d1's median level for scores and basal's 5%-risk verdict. The dark band under the answers counts how often all models agree on the top answer; **Raw response JSON**, below the desk, has all numbers. On a phone or a screen under 600 px tall the desk falls back to one long column.
 
 Questions look like this:
 
@@ -89,7 +89,7 @@ Limits: at most 16 questions per run (d1's trained set size, so one pass), 2-32 
 11. SMS o dopłacie do przesyłki (parcel-fee phishing)
 12. Zgłoszenie szkody z polisy, a JSON state with Polish keys (policy dates vs the date of the incident)
 
-**load samples.txt** turns them into buttons that fill both boxes. **open my .txt…** does the same for a file of your own, read in the browser and never uploaded (up to 2 MB, Windows line endings are fine). The format:
+**samples.txt** (next to Samples) turns them into a row of buttons that fill both boxes. **my .txt…** does the same for a file of your own, read in the browser and never uploaded (up to 2 MB, Windows line endings are fine). The format:
 
 ```text
 --- 1. My first sample ---
